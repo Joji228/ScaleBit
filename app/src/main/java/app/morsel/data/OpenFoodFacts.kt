@@ -50,7 +50,7 @@ class OpenFoodFacts(version: String, client: OkHttpClient) {
         .connectTimeout(8, TimeUnit.SECONDS)
         .readTimeout(10, TimeUnit.SECONDS)
         .build()
-    private val userAgent = "Platebit/$version (https://github.com/Joji228/Platebit)"
+    private val userAgent = "ScaleBit/$version (https://github.com/Joji228/ScaleBit)"
 
     /**
      * Products matching [query], best first, with ones sold in the app's country ahead of the

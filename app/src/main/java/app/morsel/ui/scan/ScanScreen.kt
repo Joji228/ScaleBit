@@ -562,7 +562,7 @@ private fun NoPermission(onAllow: () -> Unit) {
         Icon(Icons.Rounded.NoPhotography, null, Modifier.size(40.dp), tint = Color(0xFF8E8E93))
         Spacer(Modifier.height(12.dp))
         Text(
-            "Platebit needs the camera to scan your meals.",
+            "Scale Bit needs the camera to scan your meals.",
             style = MaterialTheme.typography.bodyMedium,
             color = Color(0xFFF5F5F7),
             textAlign = TextAlign.Center,

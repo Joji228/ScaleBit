@@ -1,7 +1,7 @@
 package app.morsel.data
 
 /**
- * Where the app is used. For now Platebit is made for Greece: the AI coach and scans assume Greek
+ * Where the app is used. For now Scale Bit is made for Greece: the AI coach and scans assume Greek
  * foods, dishes and brands, and Open Food Facts results from Greece come first. A language and
  * country choice at setup can replace this later; everything reads it from here.
  */

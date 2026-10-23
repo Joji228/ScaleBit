@@ -14,5 +14,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "Platebit"
+rootProject.name = "Scale Bit"
 include(":app")

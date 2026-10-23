@@ -12,7 +12,7 @@ android {
     compileSdk = 37
 
     defaultConfig {
-        applicationId = "app.morsel"
+        applicationId = "app.scalebit"
         minSdk = 31
         targetSdk = 36
         // versionCode only ever goes up (Android refuses to install a lower one over the app
@@ -24,9 +24,9 @@ android {
 
     // Release signing comes from keystore.properties in the project root, which is git-ignored
     // along with the keystore itself, so no signing secret ever lands in the repository:
-    //   storeFile=../platebit-release.jks
+    //   storeFile=../scalebit-release.jks
     //   storePassword=...
-    //   keyAlias=platebit
+    //   keyAlias=scalebit
     //   keyPassword=...
     // Without that file, release builds fall back to the local debug key.
     val keystoreProps = rootProject.file("keystore.properties").takeIf { it.exists() }?.let { file ->

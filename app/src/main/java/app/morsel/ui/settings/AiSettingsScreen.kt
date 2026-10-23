@@ -421,7 +421,7 @@ private fun RefreshButton(spinning: Boolean, onClick: () -> Unit) {
 }
 
 /**
- * One engine. Tapping anywhere on the card makes it the one Platebit uses (scans and the coach);
+ * One engine. Tapping anywhere on the card makes it the one Scale Bit uses (scans and the coach);
  * its rows open their own sheets, and the name opens the service list.
  */
 @Composable

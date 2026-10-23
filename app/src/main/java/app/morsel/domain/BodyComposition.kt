@@ -31,7 +31,7 @@ data class BodyComposition(
 }
 
 /**
- * Platebit's own estimate, built from published equations rather than any vendor's formula.
+ * Scale Bit's own estimate, built from published equations rather than any vendor's formula.
  *
  * Foot-to-foot impedance is noisy (how hydrated you are, how damp your feet are), so instead of
  * trusting one equation each value blends an impedance-based estimate with one from height,

@@ -22,4 +22,4 @@ keystore.properties
 secrets.properties
 *.apk
 *.aab
-platebit-backup-*.json
+scalebit-backup-*.json

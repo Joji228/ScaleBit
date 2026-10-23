@@ -282,7 +282,7 @@ fun SettingsScreen(
                                 "Export backup",
                                 subtitle = "Save all your data to a file",
                                 icon = Icons.Rounded.Upload,
-                                onClick = { exportLauncher.launch("platebit-backup-${LocalDate.now()}.json") },
+                                onClick = { exportLauncher.launch("scalebit-backup-${LocalDate.now()}.json") },
                             )
                         },
                         {
@@ -328,7 +328,7 @@ fun SettingsScreen(
                             SwitchRow(
                                 title = "Xiaomi smart scale",
                                 subtitle = if (state.scaleEnabled) {
-                                    "On. Open Platebit and step on the scale; weigh-ins save by themselves"
+                                    "On. Open Scale Bit and step on the scale; weigh-ins save by themselves"
                                 } else {
                                     "For the Mi Body Composition Scale 2 (XMTZC05HM). Adds weigh-ins over Bluetooth and a Body screen"
                                 },
@@ -406,7 +406,7 @@ fun SettingsScreen(
 
             item {
                 Text(
-                    "Platebit ${context.packageManager.getPackageInfo(context.packageName, 0).versionName} · " +
+                    "Scale Bit ${context.packageManager.getPackageInfo(context.packageName, 0).versionName} · " +
                         "Your data stays on this phone. Photos are sent only to the AI provider you choose.",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -506,7 +506,7 @@ fun SettingsScreen(
                 Text(
                     "This works only with the Xiaomi Mi Body Composition Scale 2, model XMTZC05HM: the square glass scale " +
                         "with metal pads on top. Other Xiaomi scales won't be recognized.\n\n" +
-                        "While Platebit is open on your screen, it listens for the scale and saves each weigh-in by itself, " +
+                        "While Scale Bit is open on your screen, it listens for the scale and saves each weigh-in by itself, " +
                         "with no button to press. It never listens in the background. There's nothing to pair, it never needs " +
                         "your location, and the Zepp Life app keeps working as before. A weigh-in more than 5 kg from your " +
                         "last one is checked with you first, in case someone else stepped on.\n\n" +
