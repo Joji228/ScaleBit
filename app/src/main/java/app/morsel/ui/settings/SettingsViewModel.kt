@@ -16,6 +16,7 @@ import app.morsel.data.ThemeMode
 import app.morsel.data.ThinkingLevel
 import app.morsel.domain.AdaptiveEstimate
 import app.morsel.ui.components.HapticsSetting
+import app.morsel.update.AppUpdater
 import app.morsel.update.InstallStart
 import app.morsel.update.UpdateState
 import app.morsel.domain.Targets
@@ -137,8 +138,20 @@ class SettingsViewModel(private val app: AppContainer) : ViewModel() {
     /** The Settings → Updates row: checking, offering a version, downloading, or ready to install. */
     val updates: StateFlow<UpdateState> = app.updater.state
 
+    val updater: AppUpdater = app.updater
+
+    /** The update popup, opened after a check from Settings finds a newer version. */
+    val updateDialog = MutableStateFlow(false)
+
+    fun closeUpdateDialog() {
+        updateDialog.value = false
+    }
+
     fun checkForUpdates() {
-        viewModelScope.launch { app.updater.check() }
+        viewModelScope.launch {
+            app.updater.check()
+            if (app.updater.state.value is UpdateState.Available) updateDialog.value = true
+        }
     }
 
     /** Downloads the offered version, then opens Android's install prompt on its own. */

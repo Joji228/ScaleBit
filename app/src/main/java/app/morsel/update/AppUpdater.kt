@@ -30,13 +30,17 @@ const val UPDATE_REPO = "Joji228/ScaleBit"
 /** The small file every release publishes next to its APK; Android compares its versionCode. */
 internal const val UPDATE_MANIFEST = "update.json"
 
-/** An installable version: its APK, the versionCode Android compares, and the APK's SHA-256. */
+/**
+ * An installable version: its APK, the versionCode Android compares, the APK's SHA-256, and the
+ * release notes ("what's new") written on its GitHub release.
+ */
 data class Release(
     val version: String,
     val versionCode: Long,
     val apkName: String,
     val apkUrl: String,
     val sha256: String,
+    val notes: String = "",
 )
 
 sealed interface UpdateState {
@@ -64,6 +68,7 @@ sealed interface InstallStart {
 @Serializable
 internal data class GitHubRelease(
     @SerialName("tag_name") val tagName: String = "",
+    val body: String? = null,
     val assets: List<GitHubAsset> = emptyList(),
 )
 
@@ -104,22 +109,37 @@ object ReleaseParser {
         val hash = manifest.sha256.trim().lowercase()
         if (manifest.versionName.isBlank() || manifest.versionCode <= 0 || !sha256.matches(hash)) return null
         if (manifest.apk != "ScaleBit-${manifest.versionName}.apk") return null
-        val apk = json.decodeFromString<GitHubRelease>(releaseBody).assets.firstOrNull { it.name == manifest.apk } ?: return null
+        val release = json.decodeFromString<GitHubRelease>(releaseBody)
+        val apk = release.assets.firstOrNull { it.name == manifest.apk } ?: return null
         if (!trusted(apk.downloadUrl)) return null
-        return Release(manifest.versionName, manifest.versionCode, manifest.apk, apk.downloadUrl, hash)
+        return Release(
+            version = manifest.versionName,
+            versionCode = manifest.versionCode,
+            apkName = manifest.apk,
+            apkUrl = apk.downloadUrl,
+            sha256 = hash,
+            notes = release.body.orEmpty().trim(),
+        )
     }
 
     private fun trusted(url: String): Boolean =
         url.toHttpUrlOrNull()?.let { it.scheme == "https" && it.host in trustedHosts } == true
 }
 
-/** Looks for a newer ScaleBit on GitHub, downloads it, and hands it to Android's installer. */
+/**
+ * Looks for a newer ScaleBit on GitHub, downloads it, and hands it to Android's installer.
+ * Every launch checks; a version found that way is offered in [prompt] until it is dismissed.
+ */
 class AppUpdater(private val context: Context, client: OkHttpClient) {
     private val api = client.newBuilder().connectTimeout(10, TimeUnit.SECONDS).readTimeout(15, TimeUnit.SECONDS).build()
     private val downloader = client.newBuilder().connectTimeout(10, TimeUnit.SECONDS).readTimeout(60, TimeUnit.SECONDS).build()
-    private val prefs = context.getSharedPreferences("updates", Context.MODE_PRIVATE)
     private val _state = MutableStateFlow<UpdateState>(UpdateState.Idle)
     val state: StateFlow<UpdateState> = _state.asStateFlow()
+
+    private val _prompt = MutableStateFlow<Release?>(null)
+
+    /** The version to offer on the main screen right after launch; null once it is dismissed or nothing is new. */
+    val prompt: StateFlow<Release?> = _prompt.asStateFlow()
 
     private val installed: PackageInfo
         get() = context.packageManager.getPackageInfo(context.packageName, 0)
@@ -129,24 +149,26 @@ class AppUpdater(private val context: Context, client: OkHttpClient) {
 
     private val userAgent get() = "ScaleBit/$installedVersion (https://github.com/$UPDATE_REPO)"
 
-    /** On app open: check at most once a day, and stay quiet when offline. */
-    suspend fun checkIfDue() {
-        val last = prefs.getLong(LAST_CHECK, 0L)
-        if (System.currentTimeMillis() - last >= ONE_DAY_MS) check(quiet = true)
+    /** Hides the main-screen offer until the next launch. */
+    fun dismissPrompt() {
+        _prompt.value = null
     }
 
-    /** Asks GitHub for the latest release. [quiet] hides a failure, for the automatic check. */
+    /**
+     * Asks GitHub for the latest release. [quiet] is the check on launch: a failure stays hidden,
+     * and a version found is offered on the main screen. A check from Settings shows its result there.
+     */
     suspend fun check(quiet: Boolean = false) {
         if (_state.value is UpdateState.Downloading || _state.value is UpdateState.Ready) return
         _state.value = UpdateState.Checking
         try {
             val release = withContext(Dispatchers.IO) { fetchLatest() }
-            prefs.edit().putLong(LAST_CHECK, System.currentTimeMillis()).apply()
             _state.value = when {
                 release == null -> UpdateState.NoRelease
                 release.versionCode > installed.longVersionCode -> UpdateState.Available(release)
                 else -> UpdateState.UpToDate
             }
+            if (quiet) _prompt.value = (_state.value as? UpdateState.Available)?.release
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
@@ -252,10 +274,5 @@ class AppUpdater(private val context: Context, client: OkHttpClient) {
         val x = a.signingInfo?.apkContentsSigners?.map { it.toByteArray().toList() }?.toSet().orEmpty()
         val y = b.signingInfo?.apkContentsSigners?.map { it.toByteArray().toList() }?.toSet().orEmpty()
         return x.isNotEmpty() && x == y
-    }
-
-    private companion object {
-        const val LAST_CHECK = "last_check"
-        const val ONE_DAY_MS = 24 * 60 * 60 * 1000L
     }
 }

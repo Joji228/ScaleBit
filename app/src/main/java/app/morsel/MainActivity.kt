@@ -100,6 +100,7 @@ import app.morsel.ui.settings.AiSettingsScreen
 import app.morsel.ui.settings.SettingsScreen
 import app.morsel.ui.settings.SettingsViewModel
 import app.morsel.ui.theme.MorselTheme
+import app.morsel.ui.update.UpdatePrompt
 import kotlinx.coroutines.flow.first
 import kotlinx.serialization.Serializable
 
@@ -172,6 +173,8 @@ class MainActivity : ComponentActivity() {
                         .background(MaterialTheme.colorScheme.background),
                 ) {
                     start?.let { MorselNavHost(container, it) }
+                    // The update popup, offered once per launch when a newer version exists.
+                    if (start is TodayRoute) UpdatePrompt(container.updater)
                 }
             }
         }

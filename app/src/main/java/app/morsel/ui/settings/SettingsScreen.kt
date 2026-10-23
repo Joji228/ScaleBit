@@ -100,6 +100,7 @@ import app.morsel.ui.components.PillSelector
 import app.morsel.ui.components.RoundIconButton
 import app.morsel.ui.components.format
 import app.morsel.ui.theme.Nutrient
+import app.morsel.ui.update.UpdateDialog
 import java.time.LocalDate
 import kotlin.math.roundToInt
 
@@ -115,6 +116,8 @@ fun SettingsScreen(
     val message by viewModel.message.collectAsStateWithLifecycle()
     val context = LocalContext.current
 
+    val showUpdate by viewModel.updateDialog.collectAsStateWithLifecycle()
+    val updateState by viewModel.updates.collectAsStateWithLifecycle()
     var targetDialog by remember { mutableStateOf(false) }
     var waterDialog by remember { mutableStateOf(false) }
     var resetDialog by remember { mutableStateOf(false) }
@@ -482,6 +485,9 @@ fun SettingsScreen(
         }
     }
 
+    if (showUpdate) {
+        UpdateDialog(viewModel.updater, updateState) { viewModel.closeUpdateDialog() }
+    }
     if (targetDialog) {
         val profile = state.profile
         var kcal by remember { mutableDoubleStateOf((state.targets?.kcal ?: 2000).toDouble()) }

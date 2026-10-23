@@ -59,7 +59,7 @@ class AppContainer(context: Context) {
     private val http = OkHttpClient()
     val ai = AiService(settings, http)
     val scale = MiScaleScanner(context)
-    /** Looks for a newer ScaleBit on GitHub; the user decides when to install it. */
+    /** Looks for a newer ScaleBit on GitHub on each launch; the user decides when to install it. */
     val updater = AppUpdater(context, http)
 
     /** The free Open Food Facts product database; only used when turned on in Settings. */
@@ -90,8 +90,8 @@ class AppContainer(context: Context) {
     }
 
     init {
-        // Opening the app looks for a newer version, at most once a day.
-        scope.launch { updater.checkIfDue() }
+        // Every launch looks for a newer version and offers it on the main screen.
+        scope.launch { updater.check(quiet = true) }
     }
 
     init {

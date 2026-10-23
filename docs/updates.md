@@ -1,16 +1,18 @@
 # Updates
 
-ScaleBit checks GitHub for a newer version each time you open the app (at most once a day) and
-shows it in **Settings → Updates**. Tapping **Download** fetches the APK, checks it against the
-SHA-256 in the release's `update.json`, and opens Android's install prompt. You confirm once and the
-update replaces the app in place: meals, weigh-ins, settings and API keys stay.
+ScaleBit checks GitHub for a newer version every time it launches. If one exists, a popup shows the
+version and its **What's new** notes (the release notes), with **Download** and **Not now**.
+**Settings → Updates → Check for updates** shows the same popup when a newer version exists.
+Tapping **Download** fetches the APK, checks it against the SHA-256 in the release's `update.json`,
+and opens Android's install prompt. You confirm once and the update replaces the app in place:
+meals, weigh-ins, settings and API keys stay.
 
 ## What a release needs
 
 Each GitHub release that is **not** a draft or pre-release, and is the latest one, needs two assets:
 
 - `ScaleBit-<version>.apk`, the release-signed APK.
-- `update.json`, which the app reads first:
+- `update.json`, which the app reads first (the release notes come from the release's description):
 
   ```json
   {"versionName": "0.0.1", "versionCode": 30, "apk": "ScaleBit-0.0.1.apk", "sha256": "<hex digest of the APK>"}
