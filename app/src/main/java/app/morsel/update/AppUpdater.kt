@@ -27,19 +27,23 @@ import java.util.concurrent.TimeUnit
 /** Where new versions come from: the latest non-draft, non-prerelease GitHub release of this repo. */
 const val UPDATE_REPO = "Joji228/ScaleBit"
 
-/** A published version: its APK and the checksum file published next to it. */
+/** The small file every release publishes next to its APK; Android compares its versionCode. */
+internal const val UPDATE_MANIFEST = "update.json"
+
+/** An installable version: its APK, the versionCode Android compares, and the APK's SHA-256. */
 data class Release(
     val version: String,
+    val versionCode: Long,
     val apkName: String,
     val apkUrl: String,
-    val checksumUrl: String,
+    val sha256: String,
 )
 
 sealed interface UpdateState {
     data object Idle : UpdateState
     data object Checking : UpdateState
     data object UpToDate : UpdateState
-    /** The latest release has no ScaleBit-<version>.apk with its checksum yet. */
+    /** The latest release has no usable update.json and APK yet. */
     data object NoRelease : UpdateState
     data class Available(val release: Release) : UpdateState
     /** [fraction] runs from 0 to 1 while the APK arrives. */
@@ -52,7 +56,7 @@ sealed interface UpdateState {
 sealed interface InstallStart {
     /** Android's install prompt is on screen. */
     data object Started : InstallStart
-    /** The user must allow installs from Scale Bit first; open [AppUpdater.permissionIntent]. */
+    /** The user must allow installs from ScaleBit first; open [AppUpdater.permissionIntent]. */
     data object NeedsPermission : InstallStart
     data class Refused(val message: String) : InstallStart
 }
@@ -69,48 +73,47 @@ internal data class GitHubAsset(
     @SerialName("browser_download_url") val downloadUrl: String = "",
 )
 
-/** Reads GitHub's release JSON and picks out the APK; separate so it can be tested without the network. */
+/** What update.json says about one release. */
+@Serializable
+internal data class UpdateManifest(
+    val versionName: String = "",
+    val versionCode: Long = 0,
+    val apk: String = "",
+    val sha256: String = "",
+)
+
+/** Reads a release and its update.json; separate so it can be tested without the network. */
 object ReleaseParser {
     private val json = Json { ignoreUnknownKeys = true }
     private val trustedHosts = setOf("github.com", "objects.githubusercontent.com", "release-assets.githubusercontent.com")
     private val sha256 = Regex("[0-9a-f]{64}")
 
-    /** The release as an installable version, or null when it has no ScaleBit-<version>.apk and checksum. */
-    fun parse(body: String): Release? {
-        val release = json.decodeFromString<GitHubRelease>(body)
-        val version = release.tagName.removePrefix("v").trim()
-        if (version.isEmpty()) return null
-        val apkName = "ScaleBit-$version.apk"
-        val apk = release.assets.firstOrNull { it.name == apkName } ?: return null
-        val checksum = release.assets.firstOrNull { it.name == "$apkName.sha256" } ?: return null
-        if (!trusted(apk.downloadUrl) || !trusted(checksum.downloadUrl)) return null
-        return Release(version, apkName, apk.downloadUrl, checksum.downloadUrl)
-    }
+    /** Where to download the release's update.json from, or null when the release doesn't have one. */
+    fun manifestUrl(releaseBody: String): String? =
+        json.decodeFromString<GitHubRelease>(releaseBody).assets
+            .firstOrNull { it.name == UPDATE_MANIFEST }
+            ?.downloadUrl
+            ?.takeIf(::trusted)
 
-    /** The hex digest from a `sha256sum` line ("<digest>  ScaleBit-1.5.0.apk"), lower-cased, or null. */
-    fun checksum(text: String): String? =
-        text.trim().split(Regex("\\s+")).firstOrNull()?.lowercase()?.takeIf { sha256.matches(it) }
+    /**
+     * The release as an installable version, or null when update.json is incomplete or its APK
+     * isn't attached (or isn't named ScaleBit-<versionName>.apk as the manifest says).
+     */
+    fun parse(releaseBody: String, manifestBody: String): Release? {
+        val manifest = json.decodeFromString<UpdateManifest>(manifestBody)
+        val hash = manifest.sha256.trim().lowercase()
+        if (manifest.versionName.isBlank() || manifest.versionCode <= 0 || !sha256.matches(hash)) return null
+        if (manifest.apk != "ScaleBit-${manifest.versionName}.apk") return null
+        val apk = json.decodeFromString<GitHubRelease>(releaseBody).assets.firstOrNull { it.name == manifest.apk } ?: return null
+        if (!trusted(apk.downloadUrl)) return null
+        return Release(manifest.versionName, manifest.versionCode, manifest.apk, apk.downloadUrl, hash)
+    }
 
     private fun trusted(url: String): Boolean =
         url.toHttpUrlOrNull()?.let { it.scheme == "https" && it.host in trustedHosts } == true
-
-    /** True when [latest] is a higher version than [current], comparing dotted numbers ("1.10.0" > "1.9.0"). */
-    fun isNewer(latest: String, current: String): Boolean {
-        val a = parts(latest)
-        val b = parts(current)
-        for (i in 0 until maxOf(a.size, b.size)) {
-            val x = a.getOrElse(i) { 0 }
-            val y = b.getOrElse(i) { 0 }
-            if (x != y) return x > y
-        }
-        return false
-    }
-
-    private fun parts(version: String): List<Int> =
-        version.removePrefix("v").split('.').map { it.takeWhile(Char::isDigit).toIntOrNull() ?: 0 }
 }
 
-/** Looks for a newer Scale Bit on GitHub, downloads it, and hands it to Android's installer. */
+/** Looks for a newer ScaleBit on GitHub, downloads it, and hands it to Android's installer. */
 class AppUpdater(private val context: Context, client: OkHttpClient) {
     private val api = client.newBuilder().connectTimeout(10, TimeUnit.SECONDS).readTimeout(15, TimeUnit.SECONDS).build()
     private val downloader = client.newBuilder().connectTimeout(10, TimeUnit.SECONDS).readTimeout(60, TimeUnit.SECONDS).build()
@@ -118,8 +121,11 @@ class AppUpdater(private val context: Context, client: OkHttpClient) {
     private val _state = MutableStateFlow<UpdateState>(UpdateState.Idle)
     val state: StateFlow<UpdateState> = _state.asStateFlow()
 
+    private val installed: PackageInfo
+        get() = context.packageManager.getPackageInfo(context.packageName, 0)
+
     val installedVersion: String
-        get() = context.packageManager.getPackageInfo(context.packageName, 0).versionName ?: ""
+        get() = installed.versionName ?: ""
 
     private val userAgent get() = "ScaleBit/$installedVersion (https://github.com/$UPDATE_REPO)"
 
@@ -138,7 +144,7 @@ class AppUpdater(private val context: Context, client: OkHttpClient) {
             prefs.edit().putLong(LAST_CHECK, System.currentTimeMillis()).apply()
             _state.value = when {
                 release == null -> UpdateState.NoRelease
-                ReleaseParser.isNewer(release.version, installedVersion) -> UpdateState.Available(release)
+                release.versionCode > installed.longVersionCode -> UpdateState.Available(release)
                 else -> UpdateState.UpToDate
             }
         } catch (e: CancellationException) {
@@ -170,11 +176,11 @@ class AppUpdater(private val context: Context, client: OkHttpClient) {
         val archive = context.packageManager.getPackageArchiveInfo(file.path, PackageManager.GET_SIGNING_CERTIFICATES)
             ?: return InstallStart.Refused("The download can't be read. Try again.")
         if (archive.packageName != context.packageName) return InstallStart.Refused("That file is for another app.")
-        val installed = context.packageManager.getPackageInfo(context.packageName, PackageManager.GET_SIGNING_CERTIFICATES)
-        if (!sameSigner(archive, installed)) {
+        val current = context.packageManager.getPackageInfo(context.packageName, PackageManager.GET_SIGNING_CERTIFICATES)
+        if (!sameSigner(archive, current)) {
             return InstallStart.Refused("That version is signed with a different key, so it can't update this app.")
         }
-        if (archive.longVersionCode <= installed.longVersionCode) {
+        if (archive.longVersionCode <= current.longVersionCode) {
             return InstallStart.Refused("That file isn't newer than the version on this phone.")
         }
         if (!context.packageManager.canRequestPackageInstalls()) return InstallStart.NeedsPermission
@@ -187,27 +193,30 @@ class AppUpdater(private val context: Context, client: OkHttpClient) {
         return InstallStart.Started
     }
 
-    /** The Settings page where the user allows installs from Scale Bit. */
+    /** The Settings page where the user allows installs from ScaleBit. */
     fun permissionIntent(): Intent =
         Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES, Uri.parse("package:${context.packageName}"))
             .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
 
-    /** Null when GitHub has no published version with an APK and checksum yet. */
+    /** Null when the latest release has no update.json or APK yet. */
     private fun fetchLatest(): Release? {
-        val request = Request.Builder()
-            .url("https://api.github.com/repos/$UPDATE_REPO/releases/latest")
-            .header("Accept", "application/vnd.github+json")
-            .header("User-Agent", userAgent)
-            .build()
+        val releaseBody = get("https://api.github.com/repos/$UPDATE_REPO/releases/latest") ?: return null
+        val manifestUrl = ReleaseParser.manifestUrl(releaseBody) ?: return null
+        val manifestBody = get(manifestUrl) ?: return null
+        return ReleaseParser.parse(releaseBody, manifestBody)
+    }
+
+    /** The response body, or null for a 404 (nothing published there). */
+    private fun get(url: String): String? {
+        val request = Request.Builder().url(url).header("User-Agent", userAgent).build()
         api.newCall(request).execute().use { response ->
             if (response.code == 404) return null
             if (!response.isSuccessful) throw IOException("GitHub answered ${response.code}")
-            return ReleaseParser.parse(response.body.string())
+            return response.body.string()
         }
     }
 
     private fun fetchApk(release: Release): File {
-        val expected = fetchChecksum(release)
         val dir = File(context.cacheDir, "updates").apply { mkdirs() }
         dir.listFiles()?.forEach { it.delete() }
         val target = File(dir, release.apkName)
@@ -231,21 +240,12 @@ class AppUpdater(private val context: Context, client: OkHttpClient) {
                 }
             }
             val actual = digest.digest().joinToString("") { "%02x".format(it.toInt() and 0xff) }
-            if (actual != expected) {
+            if (actual != release.sha256) {
                 target.delete()
                 throw IOException("the file doesn't match its published checksum")
             }
         }
         return target
-    }
-
-    private fun fetchChecksum(release: Release): String {
-        val request = Request.Builder().url(release.checksumUrl).header("User-Agent", userAgent).build()
-        api.newCall(request).execute().use { response ->
-            if (!response.isSuccessful) throw IOException("GitHub answered ${response.code}")
-            return ReleaseParser.checksum(response.body.string())
-                ?: throw IOException("the published checksum is unreadable")
-        }
     }
 
     private fun sameSigner(a: PackageInfo, b: PackageInfo): Boolean {

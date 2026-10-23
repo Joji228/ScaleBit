@@ -14,5 +14,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "Scale Bit"
+rootProject.name = "ScaleBit"
 include(":app")

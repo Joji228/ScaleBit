@@ -8,7 +8,7 @@
     <uses-permission android:name="android.permission.VIBRATE" />
     <uses-permission android:name="android.permission.CAMERA" />
     <uses-permission android:name="android.permission.INTERNET" />
-    <!-- Installs a newer Scale Bit downloaded from GitHub, after the user confirms it in Settings → Updates. -->
+    <!-- Installs a newer ScaleBit downloaded from GitHub, after the user confirms it in Settings → Updates. -->
     <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
     <!-- Reads the smart scale's Bluetooth broadcasts. It never locates the phone. -->
     <uses-permission

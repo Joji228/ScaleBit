@@ -12,17 +12,17 @@ import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 
 /**
- * Saves a full-page image to the gallery, in Pictures/Scale Bit. MediaStore needs no storage
+ * Saves a full-page image to the gallery, in Pictures/ScaleBit. MediaStore needs no storage
  * permission for the app's own new images on Android 10 and later.
  */
 suspend fun savePageToGallery(context: Context, image: Bitmap) = withContext(Dispatchers.IO) {
     // Images drawn by the GPU can't be compressed directly; a software copy can.
     val bitmap = if (image.config == Bitmap.Config.HARDWARE) image.copy(Bitmap.Config.ARGB_8888, false) else image
-    val name = "Scale Bit body " + LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH.mm.ss")) + ".png"
+    val name = "ScaleBit body " + LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH.mm.ss")) + ".png"
     val values = ContentValues().apply {
         put(MediaStore.Images.Media.DISPLAY_NAME, name)
         put(MediaStore.Images.Media.MIME_TYPE, "image/png")
-        put(MediaStore.Images.Media.RELATIVE_PATH, Environment.DIRECTORY_PICTURES + "/Scale Bit")
+        put(MediaStore.Images.Media.RELATIVE_PATH, Environment.DIRECTORY_PICTURES + "/ScaleBit")
         put(MediaStore.Images.Media.IS_PENDING, 1)
     }
     val resolver = context.contentResolver

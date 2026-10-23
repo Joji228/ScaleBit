@@ -190,11 +190,11 @@ class SettingsViewModel(private val app: AppContainer) : ViewModel() {
 
     fun setDeepseekThinking(level: ThinkingLevel) = viewModelScope.launch { app.settings.setDeepseekThinking(level) }
 
-    /** Adds the next engine that isn't in the list yet (up to four). Keys are left alone. */
-    fun addEngine() = viewModelScope.launch {
+    /** Adds [provider] to the engine list (up to four). Its key is saved separately by [saveKey]. */
+    fun addEngine(provider: Provider) = viewModelScope.launch {
         val ai = state.value.ai
-        val next = ai.addableEngines.firstOrNull() ?: return@launch
-        app.settings.setEngines(ai.activeEngines + next)
+        if (provider in ai.activeEngines || ai.activeEngines.size >= AiSettings.MAX_ENGINES) return@launch
+        app.settings.setEngines(ai.activeEngines + provider)
     }
 
     /** Picking another service in an engine's dropdown. The old service's saved key stays stored. */

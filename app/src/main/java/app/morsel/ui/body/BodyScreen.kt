@@ -201,7 +201,7 @@ fun BodyScreen(viewModel: BodyViewModel, onBack: () -> Unit) {
             ) {
                 val latest = state.latest
                 if (latest == null) {
-                    EmptyCard("No weigh-ins yet", "Step on your smart scale with Scale Bit open, or log your weight, to see your trends here.")
+                    EmptyCard("No weigh-ins yet", "Step on your smart scale with ScaleBit open, or log your weight, to see your trends here.")
                     return@Column
                 }
                 val entry = scans.getOrNull(index)
@@ -231,7 +231,7 @@ fun BodyScreen(viewModel: BodyViewModel, onBack: () -> Unit) {
                     if (entry == null) {
                         EmptyCard(
                             "Body composition",
-                            "Turn on the smart scale in Settings, then step on it barefoot with Scale Bit open to see body fat, muscle, water and more.",
+                            "Turn on the smart scale in Settings, then step on it barefoot with ScaleBit open to see body fat, muscle, water and more.",
                         )
                     } else {
                         CompositionCard(entry.report, scans.getOrNull(index - 1)?.report, state.series)

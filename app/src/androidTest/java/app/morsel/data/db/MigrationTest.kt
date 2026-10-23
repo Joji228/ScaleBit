@@ -10,7 +10,7 @@ import org.junit.Test
 import org.junit.runner.RunWith
 
 /**
- * The real upgrade path of every phone that had Scale Bit before 1.0: a version 1 database with
+ * The real upgrade path of every phone that had ScaleBit before 1.0: a version 1 database with
  * data, upgraded with the app's own migration. Nothing may be lost, and the new body-composition
  * columns start empty.
  */

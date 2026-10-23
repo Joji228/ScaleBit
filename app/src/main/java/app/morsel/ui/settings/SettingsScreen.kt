@@ -329,7 +329,7 @@ fun SettingsScreen(
                             SwitchRow(
                                 title = "Xiaomi smart scale",
                                 subtitle = if (state.scaleEnabled) {
-                                    "On. Open Scale Bit and step on the scale; weigh-ins save by themselves"
+                                    "On. Open ScaleBit and step on the scale; weigh-ins save by themselves"
                                 } else {
                                     "For the Mi Body Composition Scale 2 (XMTZC05HM). Adds weigh-ins over Bluetooth and a Body screen"
                                 },
@@ -401,7 +401,7 @@ fun SettingsScreen(
                             when (val u = update) {
                                 UpdateState.Idle -> ListRow(
                                     "Check for updates",
-                                    subtitle = "Looks on GitHub each time you open Scale Bit",
+                                    subtitle = "Looks on GitHub each time you open ScaleBit",
                                     icon = Icons.Rounded.Download,
                                     onClick = check,
                                 )
@@ -411,7 +411,7 @@ fun SettingsScreen(
                                     enabled = false,
                                 )
                                 UpdateState.UpToDate -> ListRow(
-                                    "Scale Bit is up to date",
+                                    "ScaleBit is up to date",
                                     subtitle = "Version $installed. Tap to check again",
                                     icon = Icons.Rounded.Download,
                                     onClick = check,
@@ -472,7 +472,7 @@ fun SettingsScreen(
 
             item {
                 Text(
-                    "Scale Bit ${context.packageManager.getPackageInfo(context.packageName, 0).versionName} · " +
+                    "ScaleBit ${context.packageManager.getPackageInfo(context.packageName, 0).versionName} · " +
                         "Your data stays on this phone. Photos are sent only to the AI provider you choose.",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -572,7 +572,7 @@ fun SettingsScreen(
                 Text(
                     "This works only with the Xiaomi Mi Body Composition Scale 2, model XMTZC05HM: the square glass scale " +
                         "with metal pads on top. Other Xiaomi scales won't be recognized.\n\n" +
-                        "While Scale Bit is open on your screen, it listens for the scale and saves each weigh-in by itself, " +
+                        "While ScaleBit is open on your screen, it listens for the scale and saves each weigh-in by itself, " +
                         "with no button to press. It never listens in the background. There's nothing to pair, it never needs " +
                         "your location, and the Zepp Life app keeps working as before. A weigh-in more than 5 kg from your " +
                         "last one is checked with you first, in case someone else stepped on.\n\n" +

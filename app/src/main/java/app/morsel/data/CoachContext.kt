@@ -66,7 +66,7 @@ object CoachContext {
     }
 
     private fun StringBuilder.header(now: LocalDateTime) {
-        append("# The user's Scale Bit data\n")
+        append("# The user's ScaleBit data\n")
         append("Now: ").append(now.format(DateTimeFormatter.ofPattern("EEEE yyyy-MM-dd HH:mm", Locale.ENGLISH)))
         append(". Today's numbers are still in progress.\n")
         append("Units: kcal; protein (P), carbs (C) and fat (F) in grams; water in ml; weight in kg.\n")

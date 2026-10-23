@@ -17,11 +17,25 @@ enum class Provider(
     /** Fixed endpoint root; null for [CUSTOM], where the user supplies it. */
     val baseUrl: String?,
     val keyHelp: String,
+    /** The page where the service creates a key; null for [CUSTOM], which has no single page. */
+    val keyUrl: String?,
 ) {
-    DEEPSEEK("DeepSeek", "DeepSeek", "deepseek", ApiKind.OPENAI_COMPATIBLE, "https://api.deepseek.com", "Create a key at platform.deepseek.com"),
-    GEMINI("Gemini", "Google", "gemini", ApiKind.GEMINI, null, "Create a free key at aistudio.google.com"),
-    OPENAI("OpenAI", "OpenAI", "openai", ApiKind.OPENAI_COMPATIBLE, "https://api.openai.com/v1", "Create a key at platform.openai.com"),
-    ANTHROPIC("Claude", "Anthropic", "anthropic", ApiKind.ANTHROPIC, null, "Create a key at console.anthropic.com"),
+    DEEPSEEK(
+        "DeepSeek", "DeepSeek", "deepseek", ApiKind.OPENAI_COMPATIBLE, "https://api.deepseek.com",
+        "Create a key at platform.deepseek.com", "https://platform.deepseek.com/api_keys",
+    ),
+    GEMINI(
+        "Gemini", "Google", "gemini", ApiKind.GEMINI, null,
+        "Create a free key at aistudio.google.com", "https://aistudio.google.com/app/apikey",
+    ),
+    OPENAI(
+        "OpenAI", "OpenAI", "openai", ApiKind.OPENAI_COMPATIBLE, "https://api.openai.com/v1",
+        "Create a key at platform.openai.com", "https://platform.openai.com/api-keys",
+    ),
+    ANTHROPIC(
+        "Claude", "Anthropic", "anthropic", ApiKind.ANTHROPIC, null,
+        "Create a key in the Claude Console", "https://platform.claude.com/settings/keys",
+    ),
     OPENROUTER(
         "OpenRouter",
         "Hundreds of models, some free",
@@ -29,6 +43,7 @@ enum class Provider(
         ApiKind.OPENAI_COMPATIBLE,
         "https://openrouter.ai/api/v1",
         "Create a key at openrouter.ai/keys. Models ending in :free cost nothing, with daily limits.",
+        "https://openrouter.ai/keys",
     ),
     CUSTOM(
         "Custom",
@@ -37,6 +52,7 @@ enum class Provider(
         ApiKind.OPENAI_COMPATIBLE,
         null,
         "Works with Groq, Mistral, xAI, a local server and more. Enter its address, key and a vision-capable model.",
+        null,
     ),
     ;
 
@@ -44,6 +60,22 @@ enum class Provider(
 
     /** The company, when it adds something to the name (it doesn't for "DeepSeek · DeepSeek"). */
     val byline: String? get() = company.takeIf { it != title }
+
+    /**
+     * Whether [text] looks like a key this service issues, so a key copied from its page can be
+     * recognised and pasted in by itself. Custom services use any key-shaped text.
+     */
+    fun looksLikeKey(text: String): Boolean {
+        val key = text.trim()
+        if (key.length < 16 || key.any(Char::isWhitespace)) return false
+        return when (this) {
+            DEEPSEEK, OPENAI -> key.startsWith("sk-") && !key.startsWith("sk-ant-") && !key.startsWith("sk-or-")
+            ANTHROPIC -> key.startsWith("sk-ant-")
+            OPENROUTER -> key.startsWith("sk-or-")
+            GEMINI -> key.startsWith("AIza")
+            CUSTOM -> true
+        }
+    }
 }
 
 /**

@@ -800,7 +800,7 @@ private fun EmptyMeals(isToday: Boolean, onScan: () -> Unit, onAdd: () -> Unit) 
             )
             Spacer(Modifier.height(4.dp))
             Text(
-                if (isToday) "Snap a photo of your plate and Scale Bit estimates the rest." else "Forgot something? Add it to this day.",
+                if (isToday) "Snap a photo of your plate and ScaleBit estimates the rest." else "Forgot something? Add it to this day.",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )

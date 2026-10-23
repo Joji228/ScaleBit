@@ -1,6 +1,6 @@
 # Google Drive backup (removed for now)
 
-Scale Bit briefly had an automatic backup to the user's own Google Drive. It was removed from the
+ScaleBit briefly had an automatic backup to the user's own Google Drive. It was removed from the
 app because it can't work until the app is registered with Google. This page explains how it
 worked, why it was blocked, and how to bring it back.
 
@@ -27,7 +27,7 @@ OAuth2.0"*. There's no client secret to embed. Google recognizes an Android app 
 
 ## Registering the app (one time, with your Google account)
 
-1. Go to [console.cloud.google.com](https://console.cloud.google.com) and create a project (e.g. "Scale Bit").
+1. Go to [console.cloud.google.com](https://console.cloud.google.com) and create a project (e.g. "ScaleBit").
 2. Under **APIs & Services → Library**, enable the **Google Drive API**.
 3. Under **OAuth consent screen**, choose **External**, fill in the app name and your email, and add yourself under **Test users**.
 4. Under **Credentials → Create credentials → OAuth client ID**, choose type **Android**:

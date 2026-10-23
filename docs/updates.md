@@ -1,41 +1,49 @@
 # Updates
 
-Scale Bit checks GitHub for a newer version each time you open the app (at most once a day) and
-shows it in **Settings → Updates**. Tapping **Download** fetches the APK, checks it against its
-published SHA-256, and opens Android's install prompt. You confirm once and the update replaces
-the app in place: meals, weigh-ins, settings and API keys stay.
+ScaleBit checks GitHub for a newer version each time you open the app (at most once a day) and
+shows it in **Settings → Updates**. Tapping **Download** fetches the APK, checks it against the
+SHA-256 in the release's `update.json`, and opens Android's install prompt. You confirm once and the
+update replaces the app in place: meals, weigh-ins, settings and API keys stay.
 
-## What the app needs to find a release
+## What a release needs
 
-- A GitHub release that is **not** a draft or pre-release, and is the latest one.
-- Two assets, named from the tag (`v1.5.0` → version `1.5.0`):
-  - `ScaleBit-1.5.0.apk`
-  - `ScaleBit-1.5.0.apk.sha256` (the `sha256sum` line for the APK)
-- Downloads must come from `github.com` or GitHub's asset hosts over HTTPS. Anything else is ignored.
-- The repo must be **public**: the app reads releases without a token, and no token is shipped.
+Each GitHub release that is **not** a draft or pre-release, and is the latest one, needs two assets:
+
+- `ScaleBit-<version>.apk`, the release-signed APK.
+- `update.json`, which the app reads first:
+
+  ```json
+  {"versionName": "0.0.1", "versionCode": 30, "apk": "ScaleBit-0.0.1.apk", "sha256": "<hex digest of the APK>"}
+  ```
+
+The app offers a release only when its `versionCode` is higher than the installed one. The
+version name is what people read; the version code is what Android checks. The tag is `v<version>`.
+
+Downloads must come from `github.com` or GitHub's asset hosts over HTTPS. Anything else is ignored.
+The repo must be **public**: the app reads releases without a token, and no token is shipped.
 
 ## Publishing a release
 
-1. Raise `versionCode` and `versionName` in `app/build.gradle.kts`. `versionCode` must go up every
-   release, or Android will refuse the update. The tag must match `versionName`.
-2. Build the signed APK with the release keystore (it stays on your PC, see `keystore.properties`):
+1. Raise `versionCode` in `app/build.gradle.kts` (it must go up every release, or Android refuses
+   the update) and set `versionName` to match the tag.
+2. Build the release APK with the keystore kept on your PC (see `keystore.properties`):
 
    ```bash
    ./gradlew assembleRelease
    ```
 
-3. Copy it to `ScaleBit-<version>.apk` and write its checksum next to it (PowerShell):
+3. Copy the APK to `ScaleBit-<version>.apk` and write `update.json` with its SHA-256 (PowerShell):
 
    ```powershell
-   Copy-Item app/build/outputs/apk/release/app-release.apk ScaleBit-1.5.0.apk
-   $h = (Get-FileHash ScaleBit-1.5.0.apk -Algorithm SHA256).Hash.ToLower()
-   "$h  ScaleBit-1.5.0.apk" | Set-Content -Encoding ascii ScaleBit-1.5.0.apk.sha256
+   Copy-Item app/build/outputs/apk/release/app-release.apk ScaleBit-0.0.1.apk
+   $h = (Get-FileHash ScaleBit-0.0.1.apk -Algorithm SHA256).Hash.ToLower()
+   '{"versionName": "0.0.1", "versionCode": 30, "apk": "ScaleBit-0.0.1.apk", "sha256": "' + $h + '"}' | Set-Content -Encoding ascii update.json
    ```
 
-4. Commit, tag and publish (`gh` CLI):
+4. Publish with the `gh` CLI:
 
    ```bash
-   gh release create v1.5.0 ScaleBit-1.5.0.apk ScaleBit-1.5.0.apk.sha256 --title "Scale Bit 1.5.0" --notes "What changed"
+   gh release create v0.0.1 ScaleBit-0.0.1.apk update.json --title "ScaleBit 0.0.1" --notes "What changed"
    ```
 
 ## Why the signing key matters
@@ -45,13 +53,13 @@ keeps the app's data only in that case. Losing the keystore, or signing one rele
 different key, means every phone must uninstall and start over. Back up `scalebit-release.keystore`
 and `keystore.properties` somewhere outside this repository.
 
-The checksum catches a corrupted or swapped download. The signature check is the real guard: the
-app also compares the downloaded APK's signing key with its own before it opens the installer.
+The SHA-256 catches a corrupted or swapped download. The signature check is the real guard: the app
+also compares the downloaded APK's signing key with its own before it opens the installer.
 
 ## Limits
 
 - Android does not let an app install silently. There is always one system confirmation.
-- The first install needs **Allow from this source** for Scale Bit. The app opens that page when
+- The first install needs **Allow from this source** for ScaleBit. The app opens that page when
   Android asks.
 - Google Play forbids apps that install other APKs, so a Play Store build must not include this
   updater. It belongs only in the sideloaded GitHub build.

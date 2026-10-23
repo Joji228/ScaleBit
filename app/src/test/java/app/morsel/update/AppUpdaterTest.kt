@@ -1,76 +1,72 @@
 package app.morsel.update
 
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
-import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class AppUpdaterTest {
     private val digest = "a".repeat(64)
-
-    private fun release(tag: String = "v1.5.0", assets: String) = """
-        {"tag_name": "$tag", "body": "notes", "assets": [$assets]}
-    """.trimIndent()
+    private val base = "https://github.com/Joji228/ScaleBit/releases/download/v0.0.1"
 
     private fun asset(name: String, url: String) = """{"name": "$name", "browser_download_url": "$url", "size": 1}"""
 
-    private val apk = asset("ScaleBit-1.5.0.apk", "https://github.com/Joji228/ScaleBit/releases/download/v1.5.0/ScaleBit-1.5.0.apk")
-    private val sum = asset("ScaleBit-1.5.0.apk.sha256", "https://github.com/Joji228/ScaleBit/releases/download/v1.5.0/ScaleBit-1.5.0.apk.sha256")
+    private fun release(vararg assets: String) = """{"tag_name": "v0.0.1", "assets": [${assets.joinToString(",")}]}"""
+
+    private fun manifest(
+        versionName: String = "0.0.1",
+        versionCode: Int = 30,
+        apk: String = "ScaleBit-0.0.1.apk",
+        sha256: String = digest,
+    ) = """{"versionName": "$versionName", "versionCode": $versionCode, "apk": "$apk", "sha256": "$sha256"}"""
+
+    private val manifestAsset = asset("update.json", "$base/update.json")
+    private val apkAsset = asset("ScaleBit-0.0.1.apk", "$base/ScaleBit-0.0.1.apk")
 
     @Test
-    fun newerVersionsCompareNumerically() {
-        assertTrue(ReleaseParser.isNewer("1.5.0", "1.4.0"))
-        assertTrue(ReleaseParser.isNewer("1.10.0", "1.9.0"))
-        assertTrue(ReleaseParser.isNewer("v2.0", "1.9.9"))
-        assertFalse(ReleaseParser.isNewer("1.4.0", "1.4.0"))
-        assertFalse(ReleaseParser.isNewer("1.4", "1.4.0"))
-        assertFalse(ReleaseParser.isNewer("1.3.9", "1.4.0"))
-    }
-
-    @Test
-    fun releaseWithApkAndChecksumIsInstallable() {
-        val parsed = ReleaseParser.parse(release(assets = "$apk, $sum"))
+    fun releaseWithManifestAndApkIsInstallable() {
+        val parsed = ReleaseParser.parse(release(manifestAsset, apkAsset), manifest())
         assertEquals(
             Release(
-                version = "1.5.0",
-                apkName = "ScaleBit-1.5.0.apk",
-                apkUrl = "https://github.com/Joji228/ScaleBit/releases/download/v1.5.0/ScaleBit-1.5.0.apk",
-                checksumUrl = "https://github.com/Joji228/ScaleBit/releases/download/v1.5.0/ScaleBit-1.5.0.apk.sha256",
+                version = "0.0.1",
+                versionCode = 30,
+                apkName = "ScaleBit-0.0.1.apk",
+                apkUrl = "$base/ScaleBit-0.0.1.apk",
+                sha256 = digest,
             ),
             parsed,
         )
     }
 
     @Test
-    fun releaseWithoutChecksumIsNotOffered() {
-        assertNull(ReleaseParser.parse(release(assets = apk)))
+    fun manifestIsFoundByName() {
+        assertEquals("$base/update.json", ReleaseParser.manifestUrl(release(apkAsset, manifestAsset)))
+        assertNull(ReleaseParser.manifestUrl(release(apkAsset)))
     }
 
     @Test
-    fun releaseWithOtherAppsApkIsNotOffered() {
-        val other = asset("Platebit-1.5.0.apk", "https://github.com/Joji228/Platebit/releases/download/v1.5.0/Platebit-1.5.0.apk")
-        assertNull(ReleaseParser.parse(release(assets = "$other, $sum")))
+    fun releaseWithoutApkIsNotOffered() {
+        assertNull(ReleaseParser.parse(release(manifestAsset), manifest()))
+    }
+
+    @Test
+    fun apkNamedForAnotherVersionIsRefused() {
+        assertNull(ReleaseParser.parse(release(manifestAsset, apkAsset), manifest(apk = "ScaleBit-0.0.2.apk")))
+    }
+
+    @Test
+    fun incompleteManifestIsRefused() {
+        assertNull(ReleaseParser.parse(release(manifestAsset, apkAsset), manifest(versionCode = 0)))
+        assertNull(ReleaseParser.parse(release(manifestAsset, apkAsset), manifest(sha256 = "not-a-digest")))
+        assertNull(ReleaseParser.parse(release(manifestAsset, apkAsset), manifest(versionName = "")))
     }
 
     @Test
     fun downloadFromAnotherHostIsRefused() {
-        val elsewhere = asset("ScaleBit-1.5.0.apk", "https://example.com/ScaleBit-1.5.0.apk")
-        assertNull(ReleaseParser.parse(release(assets = "$elsewhere, $sum")))
-        val plainHttp = asset("ScaleBit-1.5.0.apk", "http://github.com/Joji228/ScaleBit/releases/download/v1.5.0/ScaleBit-1.5.0.apk")
-        assertNull(ReleaseParser.parse(release(assets = "$plainHttp, $sum")))
-    }
-
-    @Test
-    fun emptyTagIsNotOffered() {
-        assertNull(ReleaseParser.parse(release(tag = "v", assets = "$apk, $sum")))
-    }
-
-    @Test
-    fun checksumIsReadFromSha256sumLine() {
-        assertEquals(digest, ReleaseParser.checksum("$digest  ScaleBit-1.5.0.apk\n"))
-        assertEquals(digest, ReleaseParser.checksum(digest.uppercase()))
-        assertNull(ReleaseParser.checksum("not a digest  ScaleBit-1.5.0.apk"))
-        assertNull(ReleaseParser.checksum(""))
+        val elsewhere = asset("ScaleBit-0.0.1.apk", "https://example.com/ScaleBit-0.0.1.apk")
+        assertNull(ReleaseParser.parse(release(manifestAsset, elsewhere), manifest()))
+        val plainHttp = asset("ScaleBit-0.0.1.apk", "http://github.com/Joji228/ScaleBit/releases/download/v0.0.1/ScaleBit-0.0.1.apk")
+        assertNull(ReleaseParser.parse(release(manifestAsset, plainHttp), manifest()))
+        val elsewhereManifest = asset("update.json", "https://example.com/update.json")
+        assertNull(ReleaseParser.manifestUrl(release(elsewhereManifest)))
     }
 }

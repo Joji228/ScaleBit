@@ -23,7 +23,7 @@ class CoachRequestsTest {
         CoachMessage(false, "Great: down 1.2 kg."),
         CoachMessage(true, "And protein?"),
     )
-    private val system = CoachPrompt.system("# The user's Scale Bit data")
+    private val system = CoachPrompt.system("# The user's ScaleBit data")
 
     private fun JsonObject.str(key: String) = this[key]?.jsonPrimitive?.contentOrNull
 
@@ -66,7 +66,7 @@ class CoachRequestsTest {
     @Test
     fun systemPromptHasTheRulesThenTheData() {
         assertTrue(system.startsWith(CoachPrompt.SYSTEM))
-        assertTrue(system.endsWith("# The user's Scale Bit data"))
+        assertTrue(system.endsWith("# The user's ScaleBit data"))
     }
 
     @Test

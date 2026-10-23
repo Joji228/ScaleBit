@@ -52,7 +52,7 @@ data class AiItem(
     @SerialName("fat_per_100g") val fatPer100: Double = 0.0,
     /** Brand and product for packaged foods ("Oreo Original"), blank for anything else. */
     val product: String = "",
-    /** Set by Scale Bit when the numbers came from Open Food Facts: the product it matched. */
+    /** Set by ScaleBit when the numbers came from Open Food Facts: the product it matched. */
     val foodFacts: String? = null,
 )
 

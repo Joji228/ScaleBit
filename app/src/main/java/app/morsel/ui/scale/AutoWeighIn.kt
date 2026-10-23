@@ -76,7 +76,7 @@ import kotlin.math.sin
 private enum class Stage { WEIGHING, MEASURING, DONE }
 
 /**
- * Hands-free weigh-ins: while Scale Bit is open on screen and the smart scale is turned on in
+ * Hands-free weigh-ins: while ScaleBit is open on screen and the smart scale is turned on in
  * Settings, it listens for the scale. As soon as someone steps on, a full-screen dial follows the
  * weight; once body composition is measured the weigh-in is saved and the Body screen opens.
  * It never listens in the background: scanning stops as soon as the app leaves the screen.

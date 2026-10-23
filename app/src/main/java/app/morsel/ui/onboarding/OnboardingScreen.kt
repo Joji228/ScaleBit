@@ -153,10 +153,10 @@ private fun Welcome() {
         Image(painterResource(R.drawable.ic_launcher_foreground), null, Modifier.size(150.dp))
     }
     Spacer(Modifier.height(32.dp))
-    Text("Welcome to Scale Bit", style = MaterialTheme.typography.displaySmall)
+    Text("Welcome to ScaleBit", style = MaterialTheme.typography.displaySmall)
     Spacer(Modifier.height(12.dp))
     Text(
-        "Snap a photo of your meal and Scale Bit estimates the calories and macros for you.",
+        "Snap a photo of your meal and ScaleBit estimates the calories and macros for you.",
         style = MaterialTheme.typography.bodyLarge,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
     )

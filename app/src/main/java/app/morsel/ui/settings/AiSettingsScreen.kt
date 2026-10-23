@@ -63,6 +63,10 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.ExposedDropdownMenuBox
+import androidx.compose.material3.ExposedDropdownMenuDefaults
+import androidx.compose.material3.ExposedDropdownMenuAnchorType
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
@@ -75,7 +79,14 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalUriHandler
+import androidx.compose.ui.platform.LocalWindowInfo
+import android.content.ClipboardManager
+import android.content.Context
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -126,6 +137,7 @@ fun AiSettingsScreen(viewModel: SettingsViewModel, onBack: () -> Unit) {
     var thinkingSheet by remember { mutableStateOf(false) }
     var backupSheet by remember { mutableStateOf(false) }
     var removing by remember { mutableStateOf<Provider?>(null) }
+    var addSheet by remember { mutableStateOf(false) }
 
     // A new scan engine, key or address: check its balance again.
     LaunchedEffect(ai.primary, ai.keyFor(ai.primary), ai.customBaseUrl) { viewModel.refreshBalance() }
@@ -190,7 +202,7 @@ fun AiSettingsScreen(viewModel: SettingsViewModel, onBack: () -> Unit) {
                     Surface(
                         onClick = {
                             haptics.tick()
-                            viewModel.addEngine()
+                            addSheet = true
                         },
                         shape = RoundedCornerShape(18.dp),
                         color = Color.Transparent,
@@ -252,6 +264,16 @@ fun AiSettingsScreen(viewModel: SettingsViewModel, onBack: () -> Unit) {
             viewModel = viewModel,
             onDismiss = {
                 keySheet = null
+                viewModel.resetKeyCheck()
+            },
+        )
+    }
+    if (addSheet) {
+        AddEngineSheet(
+            addable = ai.addableEngines,
+            viewModel = viewModel,
+            onDismiss = {
+                addSheet = false
                 viewModel.resetKeyCheck()
             },
         )
@@ -421,7 +443,7 @@ private fun RefreshButton(spinning: Boolean, onClick: () -> Unit) {
 }
 
 /**
- * One engine. Tapping anywhere on the card makes it the one Scale Bit uses (scans and the coach);
+ * One engine. Tapping anywhere on the card makes it the one ScaleBit uses (scans and the coach);
  * its rows open their own sheets, and the name opens the service list.
  */
 @Composable
@@ -663,6 +685,8 @@ private fun KeySheet(provider: Provider, initialKey: String, initialUrl: String,
     var visible by remember { mutableStateOf(false) }
     val check by viewModel.keyCheck.collectAsStateWithLifecycle()
     Sheet(title = "${provider.title} API key", subtitle = provider.keyHelp, onDismiss = onDismiss) { close ->
+        GetKeyButton(provider)
+        PasteKeyOnReturn(provider, key) { key = it }
         if (provider.needsBaseUrl) {
             OutlinedTextField(
                 value = url,
@@ -718,6 +742,200 @@ private fun SheetButton(label: String, filled: Boolean, modifier: Modifier, onCl
     ) {
         Box(contentAlignment = Alignment.Center) {
             Text(label, style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.SemiBold))
+        }
+    }
+}
+
+/**
+ * Adding an engine in four steps: choose the platform, open its key page, paste the key, save and
+ * test. A key copied on that page is pasted in by itself when you come back to ScaleBit.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun AddEngineSheet(addable: List<Provider>, viewModel: SettingsViewModel, onDismiss: () -> Unit) {
+    val context = LocalContext.current
+    var provider by remember { mutableStateOf<Provider?>(null) }
+    var menuOpen by remember { mutableStateOf(false) }
+    var key by remember { mutableStateOf("") }
+    var url by remember { mutableStateOf("") }
+    var visible by remember { mutableStateOf(false) }
+    var pasted by remember { mutableStateOf(false) }
+    val check by viewModel.keyCheck.collectAsStateWithLifecycle()
+    val chosen = provider
+    Sheet(title = "Add an AI engine", subtitle = "Four quick steps. Your key stays on this phone.", onDismiss = onDismiss) { close ->
+        Step(1, "Choose a platform") {
+            ExposedDropdownMenuBox(expanded = menuOpen, onExpandedChange = { menuOpen = it }) {
+                OutlinedTextField(
+                    value = chosen?.title.orEmpty(),
+                    onValueChange = {},
+                    readOnly = true,
+                    singleLine = true,
+                    label = { Text("AI platform") },
+                    placeholder = { Text("Choose one") },
+                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = menuOpen) },
+                    shape = RoundedCornerShape(14.dp),
+                    modifier = Modifier.menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable).fillMaxWidth(),
+                )
+                ExposedDropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
+                    addable.forEach { option ->
+                        DropdownMenuItem(
+                            text = {
+                                Column {
+                                    Text(option.title, style = MaterialTheme.typography.bodyLarge)
+                                    option.byline?.let {
+                                        Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                    }
+                                }
+                            },
+                            onClick = {
+                                provider = option
+                                key = ""
+                                url = ""
+                                pasted = false
+                                menuOpen = false
+                            },
+                        )
+                    }
+                }
+            }
+        }
+
+        if (chosen != null) {
+            Step(2, "Get your ${chosen.title} key") {
+                GetKeyButton(chosen)
+                Text(
+                    if (chosen.keyUrl != null) {
+                        "Copy the key on that page, then come back here. ScaleBit pastes it in for you."
+                    } else {
+                        chosen.keyHelp
+                    },
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+
+            Step(3, "Paste your key") {
+                PasteKeyOnReturn(chosen, key) {
+                    key = it
+                    pasted = true
+                }
+                if (chosen.needsBaseUrl) {
+                    OutlinedTextField(
+                        value = url,
+                        onValueChange = { url = it },
+                        singleLine = true,
+                        label = { Text("Service address") },
+                        placeholder = { Text("https://openrouter.ai/api/v1") },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri),
+                        shape = RoundedCornerShape(14.dp),
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                    Spacer(Modifier.height(10.dp))
+                }
+                OutlinedTextField(
+                    value = key,
+                    onValueChange = {
+                        key = it
+                        pasted = false
+                    },
+                    singleLine = true,
+                    placeholder = { Text("Paste your key") },
+                    visualTransformation = if (visible) VisualTransformation.None else PasswordVisualTransformation(),
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+                    trailingIcon = {
+                        IconButton(onClick = { visible = !visible }) {
+                            Icon(if (visible) Icons.Rounded.VisibilityOff else Icons.Rounded.Visibility, if (visible) "Hide key" else "Show key")
+                        }
+                    },
+                    shape = RoundedCornerShape(14.dp),
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                Spacer(Modifier.height(8.dp))
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    SheetButton("Paste from clipboard", filled = false, modifier = Modifier.weight(1f)) {
+                        clipboardText(context)?.trim()?.takeIf { it.isNotEmpty() }?.let {
+                            key = it
+                            pasted = true
+                        }
+                    }
+                }
+                if (pasted && key.isNotBlank()) {
+                    Spacer(Modifier.height(6.dp))
+                    Text("Pasted from your clipboard", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary)
+                }
+            }
+
+            Step(4, "Save and test") {
+                CheckStatus(check)
+                Spacer(Modifier.height(12.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    SheetButton("Done", filled = false, modifier = Modifier.weight(1f), onClick = close)
+                    SheetButton("Add engine", filled = true, modifier = Modifier.weight(1f)) {
+                        viewModel.addEngine(chosen)
+                        viewModel.saveKey(chosen, key, url)
+                    }
+                }
+            }
+        }
+    }
+}
+
+/** A numbered step in a sheet: the number in a dot, a title, then what the step needs. */
+@Composable
+private fun ColumnScope.Step(number: Int, title: String, content: @Composable ColumnScope.() -> Unit) {
+    Spacer(Modifier.height(14.dp))
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Box(
+            Modifier
+                .size(26.dp)
+                .clip(CircleShape)
+                .background(MaterialTheme.colorScheme.primary),
+            contentAlignment = Alignment.Center,
+        ) {
+            Text("$number", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onPrimary)
+        }
+        Spacer(Modifier.width(10.dp))
+        Text(title, style = MaterialTheme.typography.titleSmall)
+    }
+    Spacer(Modifier.height(10.dp))
+    content()
+}
+
+/** Opens the page where the service makes its key, in the browser. Nothing for a custom service. */
+@Composable
+private fun GetKeyButton(provider: Provider) {
+    val uriHandler = LocalUriHandler.current
+    val url = provider.keyUrl ?: return
+    SheetButton("Open ${provider.title} to get a key", filled = false, modifier = Modifier.fillMaxWidth()) {
+        uriHandler.openUri(url)
+    }
+    Spacer(Modifier.height(12.dp))
+}
+
+/** The clipboard's text, or null when it holds none. */
+private fun clipboardText(context: Context): String? =
+    context.getSystemService(ClipboardManager::class.java)
+        ?.primaryClip
+        ?.takeIf { it.itemCount > 0 }
+        ?.getItemAt(0)
+        ?.coerceToText(context)
+        ?.toString()
+
+/**
+ * When ScaleBit comes back to the front (say, from the key page in the browser), a key on the
+ * clipboard that this service issues fills the empty key field by itself. A key already typed is
+ * never overwritten.
+ */
+@Composable
+private fun PasteKeyOnReturn(provider: Provider, key: String, onPasted: (String) -> Unit) {
+    val context = LocalContext.current
+    val windowInfo = LocalWindowInfo.current
+    val currentKey by rememberUpdatedState(key)
+    val paste by rememberUpdatedState(onPasted)
+    LaunchedEffect(provider) {
+        snapshotFlow { windowInfo.isWindowFocused }.collect { focused ->
+            if (!focused || currentKey.isNotBlank()) return@collect
+            clipboardText(context)?.trim()?.takeIf { provider.looksLikeKey(it) }?.let(paste)
         }
     }
 }

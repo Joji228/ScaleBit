@@ -58,7 +58,7 @@ class AppContainer(context: Context) {
     private val http = OkHttpClient()
     val ai = AiService(settings, http)
     val scale = MiScaleScanner(context)
-    /** Looks for a newer Scale Bit on GitHub; the user decides when to install it. */
+    /** Looks for a newer ScaleBit on GitHub; the user decides when to install it. */
     val updater = AppUpdater(context, http)
 
     /** The free Open Food Facts product database; only used when turned on in Settings. */

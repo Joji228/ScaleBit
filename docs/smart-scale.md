@@ -1,6 +1,6 @@
 # Smart scale: protocol, weigh-in rules and formulas
 
-Scale Bit's optional integration with the **Xiaomi Mi Body Composition Scale 2 (model XMTZC05HM)**.
+ScaleBit's optional integration with the **Xiaomi Mi Body Composition Scale 2 (model XMTZC05HM)**.
 It's turned on in *Settings → Smart scale* (off by default). This page documents how it works,
 so the code can be understood and maintained without the original research notes. Every number
 here is copied from the code; if they ever disagree, the code wins.
@@ -18,7 +18,7 @@ here is copied from the code; if they ever disagree, the code wins.
 ## 1. Bluetooth protocol
 
 - **Nothing is paired or connected.** The scale advertises each reading in its BLE advertisement.
-  Scale Bit only listens, so Zepp Life keeps working, and no Xiaomi account is involved.
+  ScaleBit only listens, so Zepp Life keeps working, and no Xiaomi account is involved.
 - **Permission:** `BLUETOOTH_SCAN` with `neverForLocation`. No location permission.
 - **Filter:** service data under the Body Composition service UUID **`0x181B`**
   (`0000181B-0000-1000-8000-00805F9B34FB`). Scan mode `LOW_LATENCY`, `CALLBACK_TYPE_ALL_MATCHES`.
@@ -39,7 +39,7 @@ here is copied from the code; if they ever disagree, the code wins.
 
 ## 2. Hands-free weigh-ins (`WeighInDetector`, `AutoWeighIn`)
 
-- Listening only happens while Scale Bit is **on screen** (`repeatOnLifecycle(STARTED)`) **and** the
+- Listening only happens while ScaleBit is **on screen** (`repeatOnLifecycle(STARTED)`) **and** the
   scale is turned on in Settings. Never in the background. Bluetooth off or no permission just means nothing is heard; it retries every 5 s.
 - **Sequence:** unstable frames update the live weight. A stable frame without impedance starts
   "measuring body composition". A stable frame **with** impedance finishes the weigh-in.
@@ -98,7 +98,7 @@ and 75 % of (lean − bone).
 
 **BMR** = average of Cunningham 1980 `500 + 22·lean` and Mifflin-St Jeor for the profile.
 
-## 5. Scale Bit's own indices (`BodyAnalysis`)
+## 5. ScaleBit's own indices (`BodyAnalysis`)
 
 - **Visceral fat level (1–59):** the visceral share of fat is `0.08 + 0.0018 × (A − 20)` for men and
   `0.04 + 0.0014 × (A − 20)` for women, capped at 0.22. Level = `fat kg × share / 0.2`, rounded.
@@ -140,7 +140,7 @@ and 75 % of (lean − bone).
 ## 7. History
 
 - **Scalebit:** built as a separate side app (package `app.scalebit`, branch `scale-support`).
-- **Scale Bit 1.0.0:** its final state (B03) was merged in. The scale became opt-in in Settings.
+- **ScaleBit 1.0.0:** its final state (B03) was merged in. The scale became opt-in in Settings.
 - **1.0.1:** hands-free weigh-ins.
 - **Later:** the full-screen dial, bone and muscle in kg, and swiping between measurements on the
   Body screen. Scalebit itself was then retired; this page and the code are the reference.
