@@ -45,6 +45,7 @@ data class MealDraft(val photos: List<File>, val note: String?, val result: Anal
 class AppContainer(context: Context) {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
+
     private val database = Room.databaseBuilder(context, MorselDatabase::class.java, "morsel.db")
         .addMigrations(*MorselDatabase.MIGRATIONS)
         .build()

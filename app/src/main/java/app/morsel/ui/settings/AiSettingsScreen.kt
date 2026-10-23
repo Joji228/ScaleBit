@@ -46,6 +46,7 @@ import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
 import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.AutoAwesome
 import androidx.compose.material.icons.rounded.Check
+import androidx.compose.material.icons.rounded.ContentPaste
 import androidx.compose.material.icons.rounded.CheckCircle
 import androidx.compose.material.icons.rounded.DeleteOutline
 import androidx.compose.material.icons.rounded.ExpandMore
@@ -79,14 +80,18 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
-import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.platform.LocalUriHandler
-import androidx.compose.ui.platform.LocalWindowInfo
 import android.content.ClipboardManager
 import android.content.Context
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import kotlinx.coroutines.delay
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -684,6 +689,7 @@ private fun KeySheet(provider: Provider, initialKey: String, initialUrl: String,
     var url by remember { mutableStateOf(initialUrl) }
     var visible by remember { mutableStateOf(false) }
     val check by viewModel.keyCheck.collectAsStateWithLifecycle()
+    val context = LocalContext.current
     Sheet(title = "${provider.title} API key", subtitle = provider.keyHelp, onDismiss = onDismiss) { close ->
         GetKeyButton(provider)
         PasteKeyOnReturn(provider, key) { key = it }
@@ -708,9 +714,11 @@ private fun KeySheet(provider: Provider, initialKey: String, initialUrl: String,
             visualTransformation = if (visible) VisualTransformation.None else PasswordVisualTransformation(),
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
             trailingIcon = {
-                IconButton(onClick = { visible = !visible }) {
-                    Icon(if (visible) Icons.Rounded.VisibilityOff else Icons.Rounded.Visibility, if (visible) "Hide key" else "Show key")
-                }
+                KeyFieldIcons(
+                    visible = visible,
+                    onToggle = { visible = !visible },
+                    onPaste = { clipboardText(context)?.trim()?.takeIf { it.isNotEmpty() }?.let { key = it } },
+                )
             },
             shape = RoundedCornerShape(14.dp),
             modifier = Modifier.fillMaxWidth(),
@@ -843,22 +851,20 @@ private fun AddEngineSheet(addable: List<Provider>, viewModel: SettingsViewModel
                     visualTransformation = if (visible) VisualTransformation.None else PasswordVisualTransformation(),
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
                     trailingIcon = {
-                        IconButton(onClick = { visible = !visible }) {
-                            Icon(if (visible) Icons.Rounded.VisibilityOff else Icons.Rounded.Visibility, if (visible) "Hide key" else "Show key")
-                        }
+                        KeyFieldIcons(
+                            visible = visible,
+                            onToggle = { visible = !visible },
+                            onPaste = {
+                                clipboardText(context)?.trim()?.takeIf { it.isNotEmpty() }?.let {
+                                    key = it
+                                    pasted = true
+                                }
+                            },
+                        )
                     },
                     shape = RoundedCornerShape(14.dp),
                     modifier = Modifier.fillMaxWidth(),
                 )
-                Spacer(Modifier.height(8.dp))
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    SheetButton("Paste from clipboard", filled = false, modifier = Modifier.weight(1f)) {
-                        clipboardText(context)?.trim()?.takeIf { it.isNotEmpty() }?.let {
-                            key = it
-                            pasted = true
-                        }
-                    }
-                }
                 if (pasted && key.isNotBlank()) {
                     Spacer(Modifier.height(6.dp))
                     Text("Pasted from your clipboard", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary)
@@ -929,13 +935,35 @@ private fun clipboardText(context: Context): String? =
 @Composable
 private fun PasteKeyOnReturn(provider: Provider, key: String, onPasted: (String) -> Unit) {
     val context = LocalContext.current
-    val windowInfo = LocalWindowInfo.current
+    val lifecycleOwner = LocalLifecycleOwner.current
     val currentKey by rememberUpdatedState(key)
     val paste by rememberUpdatedState(onPasted)
-    LaunchedEffect(provider) {
-        snapshotFlow { windowInfo.isWindowFocused }.collect { focused ->
-            if (!focused || currentKey.isNotBlank()) return@collect
-            clipboardText(context)?.trim()?.takeIf { provider.looksLikeKey(it) }?.let(paste)
+    // Counts each time ScaleBit comes back to the front, say from the key page in the browser.
+    var resumes by remember { mutableIntStateOf(0) }
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) resumes++
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
+    // Once when the sheet opens, then after each return. The short wait lets the window get focus first.
+    LaunchedEffect(provider, resumes) {
+        delay(300)
+        if (currentKey.isNotBlank()) return@LaunchedEffect
+        clipboardText(context)?.trim()?.takeIf { provider.looksLikeKey(it) }?.let(paste)
+    }
+}
+
+/** The key field's icons: paste the clipboard's key, and show or hide the key. */
+@Composable
+private fun KeyFieldIcons(visible: Boolean, onToggle: () -> Unit, onPaste: () -> Unit) {
+    Row {
+        IconButton(onClick = onPaste) {
+            Icon(Icons.Rounded.ContentPaste, "Paste key from clipboard")
+        }
+        IconButton(onClick = onToggle) {
+            Icon(if (visible) Icons.Rounded.VisibilityOff else Icons.Rounded.Visibility, if (visible) "Hide key" else "Show key")
         }
     }
 }
