@@ -4,7 +4,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.lerp
 
 /**
- * The five accent colors offered in Settings. A saved color that is no longer offered falls back to Lime. Each has a bright shade for the dark theme and a deeper
+ * The five accent colors offered in Settings. A saved color that is no longer offered falls back to Blue. Each has a bright shade for the dark theme and a deeper
  * one for the light theme, so text and icons stay readable on either background.
  */
 enum class AccentColor(val title: String, val dark: Color, val light: Color) {
@@ -21,7 +21,7 @@ enum class AccentColor(val title: String, val dark: Color, val light: Color) {
     val onLightContainer: Color get() = if (this == LIME) Color(0xFF2E4A00) else lerp(light, Color.Black, 0.45f)
 
     companion object {
-        val Default = LIME
+        val Default = BLUE
 
         fun fromName(name: String?) = entries.firstOrNull { it.name == name } ?: Default
     }

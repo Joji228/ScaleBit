@@ -160,7 +160,7 @@ class MainActivity : ComponentActivity() {
             var start by remember { mutableStateOf<Any?>(null) }
             LaunchedEffect(Unit) {
                 start = if (container.settings.profile.first() == null) OnboardingRoute() else TodayRoute
-                // Let the saved accent land before the splash goes away, so it never flashes lime first.
+                // Let the saved accent land before the splash goes away, so it never flashes another color first.
                 container.settings.accent.first()
                 ready = true
             }

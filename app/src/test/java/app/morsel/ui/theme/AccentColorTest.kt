@@ -14,9 +14,14 @@ class AccentColorTest {
     }
 
     @Test
-    fun limeIsTheDefaultAndKeepsTheOriginalLook() {
-        assertEquals(AccentColor.LIME, AccentColor.Default)
-        assertEquals(0xFFC5F25A.toInt(), AccentColor.LIME.dark.toArgb())
+    fun blueIsTheDefault() {
+        assertEquals(AccentColor.BLUE, AccentColor.Default)
+        assertEquals(0xFF6C8CFF.toInt(), AccentColor.BLUE.dark.toArgb())
+    }
+
+    @Test
+    fun savedLimeStillLoads() {
+        assertEquals(AccentColor.LIME, AccentColor.fromName("LIME"))
     }
 
     @Test

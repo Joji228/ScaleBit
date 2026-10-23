@@ -10,14 +10,14 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/Joji228/ScaleBit/releases"><img src="https://img.shields.io/badge/Download-APK-C5F25A?style=for-the-badge&logo=android&logoColor=black" width="230" alt="Download APK"></a>
+  <a href="https://github.com/Joji228/ScaleBit/releases"><img src="https://img.shields.io/badge/Download-APK-6C8CFF?style=for-the-badge&logo=android&logoColor=black" width="230" alt="Download APK"></a>
 </p>
 
 <p align="center">
-  <img src="docs/screenshots/1-dashboard.png?v=4" width="23%" alt="Diary: calories, macros, water and weight trend">
-  <img src="docs/screenshots/2-body.png?v=4" width="23%" alt="Body screen with body composition">
-  <img src="docs/screenshots/3-scan-result.png?v=4" width="23%" alt="Scan result">
-  <img src="docs/screenshots/4-coach.png?v=4" width="23%" alt="AI coach answering and preparing a snack to log">
+  <img src="docs/screenshots/1-dashboard.png?v=5" width="23%" alt="Diary: calories, macros, water and weight trend">
+  <img src="docs/screenshots/2-scan.png?v=5" width="23%" alt="Scan: take a photo of a plate or a label">
+  <img src="docs/screenshots/3-settings.png?v=5" width="23%" alt="Settings in the blue accent">
+  <img src="docs/screenshots/4-updates.png?v=5" width="23%" alt="Settings: the Updates card above the Danger zone">
 </p>
 
 ## What it does

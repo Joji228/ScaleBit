@@ -25,10 +25,10 @@ object Nutrient {
 }
 
 private val DarkColors = darkColorScheme(
-    primary = Color(0xFFC5F25A),
+    primary = Color(0xFF6C8CFF),
     onPrimary = Color(0xFF0A0A0A),
-    primaryContainer = Color(0xFF2A3313),
-    onPrimaryContainer = Color(0xFFC5F25A),
+    primaryContainer = Color(0xFF151C33),
+    onPrimaryContainer = Color(0xFF6C8CFF),
     secondary = Color(0xFF8E8E93),
     onSecondary = Color(0xFF0A0A0A),
     background = Color(0xFF000000),
@@ -51,10 +51,10 @@ private val DarkColors = darkColorScheme(
 )
 
 private val LightColors = lightColorScheme(
-    primary = Color(0xFF4C7A00),
+    primary = Color(0xFF2F54D6),
     onPrimary = Color(0xFFFFFFFF),
-    primaryContainer = Color(0xFFE3F7B8),
-    onPrimaryContainer = Color(0xFF2E4A00),
+    primaryContainer = Color(0xFFDEE4F9),
+    onPrimaryContainer = Color(0xFF1A2E76),
     secondary = Color(0xFF6C6C70),
     onSecondary = Color(0xFFFFFFFF),
     background = Color(0xFFF2F2F7),
