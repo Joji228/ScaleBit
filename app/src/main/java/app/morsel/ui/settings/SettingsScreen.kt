@@ -78,6 +78,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.morsel.data.Provider
 import app.morsel.data.ThemeMode
+import app.morsel.update.UpdateState
 import androidx.compose.material.icons.rounded.Search
 import androidx.core.content.ContextCompat
 import android.content.pm.PackageManager
@@ -382,6 +383,71 @@ fun SettingsScreen(
                                 onChange = { on -> if (on) coachConfirm = true else viewModel.setCoachEnabled(false) },
                                 icon = Icons.Rounded.Forum,
                             )
+                        },
+                    ),
+                )
+            }
+
+            item { GroupLabel("Updates") }
+            item {
+                val update by viewModel.updates.collectAsStateWithLifecycle()
+                val installed = context.packageManager.getPackageInfo(context.packageName, 0).versionName.orEmpty()
+                val check = { viewModel.checkForUpdates() }
+                val download = { viewModel.downloadUpdate(context) }
+                val install = { viewModel.installUpdate(context) }
+                GroupedList(
+                    rows = listOf(
+                        {
+                            when (val u = update) {
+                                UpdateState.Idle -> ListRow(
+                                    "Check for updates",
+                                    subtitle = "Looks on GitHub each time you open Scale Bit",
+                                    icon = Icons.Rounded.Download,
+                                    onClick = check,
+                                )
+                                UpdateState.Checking -> ListRow(
+                                    "Checking for updates…",
+                                    icon = Icons.Rounded.Download,
+                                    enabled = false,
+                                )
+                                UpdateState.UpToDate -> ListRow(
+                                    "Scale Bit is up to date",
+                                    subtitle = "Version $installed. Tap to check again",
+                                    icon = Icons.Rounded.Download,
+                                    onClick = check,
+                                )
+                                UpdateState.NoRelease -> ListRow(
+                                    "No new version published yet",
+                                    subtitle = "Tap to check again",
+                                    icon = Icons.Rounded.Download,
+                                    onClick = check,
+                                )
+                                is UpdateState.Available -> ListRow(
+                                    "Version ${u.release.version} is available",
+                                    subtitle = "You have $installed. Tap to download and install",
+                                    icon = Icons.Rounded.Download,
+                                    onClick = download,
+                                )
+                                is UpdateState.Downloading -> ListRow(
+                                    "Downloading version ${u.release.version}",
+                                    value = "${(u.fraction * 100).roundToInt()}%",
+                                    icon = Icons.Rounded.Download,
+                                    enabled = false,
+                                )
+                                is UpdateState.Ready -> ListRow(
+                                    "Install version ${u.release.version}",
+                                    subtitle = "Android asks you to confirm once",
+                                    icon = Icons.Rounded.Download,
+                                    onClick = install,
+                                )
+                                is UpdateState.Failed -> ListRow(
+                                    "Couldn't update",
+                                    subtitle = "${u.message}. Tap to try again",
+                                    icon = Icons.Rounded.Download,
+                                    iconTint = MaterialTheme.colorScheme.error,
+                                    onClick = check,
+                                )
+                            }
                         },
                     ),
                 )

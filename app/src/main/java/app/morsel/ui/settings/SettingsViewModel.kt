@@ -16,6 +16,8 @@ import app.morsel.data.ThemeMode
 import app.morsel.data.ThinkingLevel
 import app.morsel.domain.AdaptiveEstimate
 import app.morsel.ui.components.HapticsSetting
+import app.morsel.update.InstallStart
+import app.morsel.update.UpdateState
 import app.morsel.domain.Targets
 import app.morsel.domain.UserProfile
 import app.morsel.ui.theme.AccentColor
@@ -131,6 +133,31 @@ class SettingsViewModel(private val app: AppContainer) : ViewModel() {
 
     val keyCheck = MutableStateFlow<KeyCheck>(KeyCheck.Idle)
     val message = MutableStateFlow<String?>(null)
+
+    /** The Settings → Updates row: checking, offering a version, downloading, or ready to install. */
+    val updates: StateFlow<UpdateState> = app.updater.state
+
+    fun checkForUpdates() {
+        viewModelScope.launch { app.updater.check() }
+    }
+
+    /** Downloads the offered version, then opens Android's install prompt on its own. */
+    fun downloadUpdate(context: Context) {
+        viewModelScope.launch {
+            app.updater.download()
+            if (app.updater.state.value is UpdateState.Ready) installUpdate(context)
+        }
+    }
+
+    /** Opens Android's install prompt for the downloaded version; allowing installs first when Android asks. */
+    fun installUpdate(context: Context) {
+        val ready = app.updater.state.value as? UpdateState.Ready ?: return
+        when (val result = app.updater.install(ready.file)) {
+            InstallStart.Started -> Unit
+            InstallStart.NeedsPermission -> context.startActivity(app.updater.permissionIntent())
+            is InstallStart.Refused -> message.value = result.message
+        }
+    }
 
     fun setTheme(mode: ThemeMode) = viewModelScope.launch { app.settings.setTheme(mode) }
 

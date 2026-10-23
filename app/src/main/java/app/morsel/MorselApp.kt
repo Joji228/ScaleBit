@@ -13,6 +13,7 @@ import app.morsel.data.PhotoStore
 import app.morsel.data.PlanRepository
 import app.morsel.data.SettingsRepository
 import app.morsel.data.StorageInfo
+import app.morsel.update.AppUpdater
 import app.morsel.ui.components.HapticsSetting
 import app.morsel.data.db.MorselDatabase
 import kotlinx.coroutines.CoroutineScope
@@ -57,6 +58,8 @@ class AppContainer(context: Context) {
     private val http = OkHttpClient()
     val ai = AiService(settings, http)
     val scale = MiScaleScanner(context)
+    /** Looks for a newer Scale Bit on GitHub; the user decides when to install it. */
+    val updater = AppUpdater(context, http)
 
     /** The free Open Food Facts product database; only used when turned on in Settings. */
     val foodFacts = OpenFoodFacts(runCatching { context.packageManager.getPackageInfo(context.packageName, 0).versionName }.getOrNull() ?: "1", http)
@@ -83,6 +86,11 @@ class AppContainer(context: Context) {
     init {
         // Settings → Haptic feedback decides whether anything in the app vibrates.
         scope.launch { settings.hapticsEnabled.collect { HapticsSetting.enabled = it } }
+    }
+
+    init {
+        // Opening the app looks for a newer version, at most once a day.
+        scope.launch { updater.checkIfDue() }
     }
 
     init {
