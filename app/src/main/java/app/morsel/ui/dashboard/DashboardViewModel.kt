@@ -3,6 +3,8 @@ package app.morsel.ui.dashboard
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import app.morsel.AppContainer
+import app.morsel.ai.AnalysisResult
+import app.morsel.ai.enrichFromFoodFacts
 import app.morsel.data.PlanState
 import app.morsel.data.db.MealWithItems
 import app.morsel.data.db.macros
@@ -21,6 +23,7 @@ import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.flowOn
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import java.time.LocalDate
 
@@ -94,7 +97,45 @@ class DashboardViewModel(private val app: AppContainer) : ViewModel() {
     /** Quick add is offered only to users who turned on Open Food Facts. */
     val foodFactsEnabled = app.settings.useFoodFacts
 
-    suspend fun searchFoods(query: String): List<FoodFact> = app.foodFacts.search(query)
+    /**
+     * A plain-language description, estimated by the AI engine (DeepSeek by default, or its backup).
+     * Branded products then take their real label values from Open Food Facts when it is on.
+     */
+    suspend fun describeFood(text: String): AnalysisResult {
+        val result = app.ai.analyze(emptyList(), text)
+        return if (app.settings.useFoodFacts.first()) result.enrichFromFoodFacts(app.foodFacts) else result
+    }
+
+    /** Logs an estimate as one meal, with all of its items. */
+    fun logEstimate(result: AnalysisResult, type: MealType, date: LocalDate) {
+        viewModelScope.launch {
+            app.repository.saveMeal(
+                MealEntity(
+                    date = date.toString(),
+                    timestamp = EntryTime.stamp(date, EntryTime.meal(type), today = app.clock.today.value),
+                    mealType = type.name,
+                    name = result.meal.mealName.ifBlank { "Meal" }.take(60),
+                    photoPath = null,
+                    source = FoodSource.withFoodFacts(
+                        result.sourceLabel ?: "${result.provider.title} · ${result.model}",
+                        result.meal.items.any { it.foodFacts != null },
+                    ).orEmpty(),
+                    note = result.meal.notes.ifBlank { null },
+                ),
+                result.meal.items.filter { it.grams > 0 }.map {
+                    FoodItemEntity(
+                        mealId = 0,
+                        name = it.name.ifBlank { "Food" },
+                        grams = it.grams,
+                        kcalPer100 = it.kcalPer100,
+                        proteinPer100 = it.proteinPer100,
+                        carbsPer100 = it.carbsPer100,
+                        fatPer100 = it.fatPer100,
+                    )
+                },
+            )
+        }
+    }
 
     /** Logs one Open Food Facts product as its own meal, on [date] (the day being viewed). */
     fun quickLog(fact: FoodFact, name: String, grams: Double, type: MealType, date: LocalDate) {

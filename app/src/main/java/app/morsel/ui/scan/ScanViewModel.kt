@@ -18,6 +18,7 @@ import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.async
 import app.morsel.ai.AnalysisResult
+import app.morsel.ai.enrichFromFoodFacts
 import app.morsel.data.BarcodeReader
 import app.morsel.data.FoodFact
 import app.morsel.ai.AiMeal
@@ -134,26 +135,8 @@ class ScanViewModel(private val app: AppContainer) : ViewModel() {
      * product's own label values when a close match is found. Lookups run side by side, at most
      * three, and the whole step gives up after a few seconds so a slow network can't hold a scan.
      */
-    private suspend fun withFoodFacts(result: AnalysisResult): AnalysisResult {
-        val products = result.meal.items.map { it.product.trim() }.filter { it.isNotEmpty() }.distinct().take(3)
-        if (products.isEmpty()) return result
-        val matches = withTimeoutOrNull(6_000) {
-            coroutineScope {
-                products.map { product -> async { product to runCatching { app.foodFacts.match(product) }.getOrNull() } }.awaitAll()
-            }
-        }?.toMap().orEmpty()
-        val items = result.meal.items.map { item ->
-            val fact = matches[item.product.trim()] ?: return@map item
-            item.copy(
-                kcalPer100 = fact.kcalPer100,
-                proteinPer100 = fact.proteinPer100,
-                carbsPer100 = fact.carbsPer100,
-                fatPer100 = fact.fatPer100,
-                foodFacts = fact.label,
-            )
-        }
-        return result.copy(meal = result.meal.copy(items = items))
-    }
+    private suspend fun withFoodFacts(result: AnalysisResult): AnalysisResult =
+        result.enrichFromFoodFacts(app.foodFacts)
 
     /** Open Food Facts lookups only happen for users who turned it on. */
     val foodFactsEnabled = app.settings.useFoodFacts

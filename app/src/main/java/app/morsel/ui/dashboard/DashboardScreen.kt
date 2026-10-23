@@ -247,7 +247,7 @@ fun DashboardScreen(
                     onPrev = { swipe.go(-1) },
                     onNext = { swipe.go(1) },
                     onSettings = onSettings,
-                    onQuickAdd = if (foodFactsOn) ({ showQuickAdd = true }) else null,
+                    onQuickAdd = { showQuickAdd = true },
                 )
             }
             // Until the first real numbers arrive, show nothing rather than placeholder targets.
@@ -338,7 +338,13 @@ fun DashboardScreen(
         val day = remember { state.date }
         val label = dayLabel(day, state.today)
         QuickAddDialog(
-            search = if (foodFactsOn) viewModel::searchFoods else null,
+            search = null,
+            describe = viewModel::describeFood,
+            onLogEstimate = { result, type ->
+                viewModel.logEstimate(result, type, day)
+                val kcal = result.meal.items.sumOf { it.kcalPer100 * it.grams / 100 }.format()
+                Toast.makeText(context, "Logged ${result.meal.mealName.ifBlank { "meal" }} · $kcal kcal · $label", Toast.LENGTH_SHORT).show()
+            },
             title = "Add food · $label",
             onDismiss = { showQuickAdd = false },
             onLog = { fact, name, grams, type ->

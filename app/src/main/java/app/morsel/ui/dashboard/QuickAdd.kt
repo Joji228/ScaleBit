@@ -39,7 +39,12 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material.icons.automirrored.rounded.Send
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.text.input.ImeAction
+import kotlinx.coroutines.launch
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Check
@@ -66,6 +71,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import app.morsel.ai.AnalysisResult
 import app.morsel.data.FoodFact
 import app.morsel.domain.MealType
 import app.morsel.ui.components.PillSelector
@@ -90,8 +96,12 @@ fun QuickAddDialog(
     title: String = "Quick add",
     /** A typed-in food: name, total kcal, protein, carbs and fat in grams, and its meal. */
     onLogManual: ((name: String, kcal: Double, protein: Double, carbs: Double, fat: Double, type: MealType) -> Unit)? = null,
+    /** Plain-language mode: the AI estimates what the user describes. Replaces the search when set. */
+    describe: (suspend (String) -> AnalysisResult)? = null,
+    /** Logs a described meal, with its estimate and the chosen meal type. */
+    onLogEstimate: ((AnalysisResult, MealType) -> Unit)? = null,
 ) {
-    var manual by remember { mutableStateOf(search == null) }
+    var manual by remember { mutableStateOf(search == null && describe == null) }
     var kcal by remember { mutableStateOf("") }
     var protein by remember { mutableStateOf("") }
     var carbs by remember { mutableStateOf("") }
@@ -179,11 +189,19 @@ fun QuickAddDialog(
                         fat = fat, onFat = { fat = it },
                         type = type, onType = { type = it },
                         focus = focus,
-                        onSearchInstead = if (search != null) ({ manual = false }) else null,
+                        searchLabel = if (describe != null) "Describe it instead" else "Search the database",
+                        onSearchInstead = if (search != null || describe != null) ({ manual = false }) else null,
                         onLog = {
                             onLogManual(name.trim().ifBlank { "Food" }, it.kcal, it.protein, it.carbs, it.fat, type)
                             closing = true
                         },
+                    )
+                } else if (describe != null) {
+                    DescribeFood(
+                        describe = describe,
+                        onLogEstimate = onLogEstimate,
+                        onEnterByHand = if (onLogManual != null) ({ manual = true }) else null,
+                        onLogged = { closing = true },
                     )
                 } else {
                 TextField(
@@ -312,6 +330,7 @@ private fun ManualFood(
     type: MealType,
     onType: (MealType) -> Unit,
     focus: FocusRequester,
+    searchLabel: String,
     onSearchInstead: (() -> Unit)?,
     onLog: (TypedFood) -> Unit,
 ) {
@@ -340,7 +359,7 @@ private fun ManualFood(
     PillSelector(MealType.entries, type, { it.title }, onType)
     Row(verticalAlignment = Alignment.CenterVertically) {
         if (onSearchInstead != null) {
-            TextButton(onClick = onSearchInstead, contentPadding = PaddingValues(horizontal = 4.dp)) { Text("Search the database") }
+            TextButton(onClick = onSearchInstead, contentPadding = PaddingValues(horizontal = 4.dp)) { Text(searchLabel) }
         }
         Spacer(Modifier.weight(1f))
         LogButton(enabled = food != null && name.isNotBlank()) { food?.let(onLog) }
@@ -379,5 +398,119 @@ private fun LogButton(enabled: Boolean, onClick: () -> Unit) {
             Spacer(Modifier.width(8.dp))
             Text("Log it", style = MaterialTheme.typography.labelLarge)
         }
+    }
+}
+
+/**
+ * The Add food box in plain words: describe what you ate. The AI engine estimates each item,
+ * branded products take their label values from Open Food Facts, and the whole meal is logged at once.
+ */
+@Composable
+private fun DescribeFood(
+    describe: suspend (String) -> AnalysisResult,
+    onLogEstimate: ((AnalysisResult, MealType) -> Unit)?,
+    onEnterByHand: (() -> Unit)?,
+    onLogged: () -> Unit,
+) {
+    val scope = rememberCoroutineScope()
+    var text by remember { mutableStateOf("") }
+    var busy by remember { mutableStateOf(false) }
+    var problem by remember { mutableStateOf<String?>(null) }
+    var answer by remember { mutableStateOf<AnalysisResult?>(null) }
+    var type by remember { mutableStateOf(MealType.forTime()) }
+
+    fun estimate() {
+        val description = text.trim()
+        if (description.isEmpty() || busy) return
+        busy = true
+        problem = null
+        scope.launch {
+            try {
+                val estimate = describe(description)
+                if (estimate.meal.items.isEmpty()) {
+                    problem = "No food found in that. Try naming what you ate, e.g. 2 eggs and toast."
+                } else {
+                    answer = estimate
+                    type = MealType.entries.firstOrNull { it.name.equals(estimate.meal.mealType, ignoreCase = true) } ?: MealType.forTime()
+                }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                problem = e.message ?: "Couldn't estimate that."
+            } finally {
+                busy = false
+            }
+        }
+    }
+
+    val estimate = answer
+    TextField(
+        text,
+        {
+            text = it
+            answer = null
+        },
+        placeholder = { Text("Describe what you ate, e.g. 2 eggs, toast with butter and a latte") },
+        trailingIcon = {
+            if (busy) {
+                CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp)
+            } else {
+                IconButton(onClick = { estimate() }, enabled = text.isNotBlank()) {
+                    Icon(Icons.AutoMirrored.Rounded.Send, "Estimate")
+                }
+            }
+        },
+        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
+        keyboardActions = KeyboardActions(onSend = { estimate() }),
+        minLines = 2,
+        maxLines = 4,
+        shape = RoundedCornerShape(16.dp),
+        colors = TextFieldDefaults.colors(
+            focusedContainerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
+            unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
+            focusedIndicatorColor = Color.Transparent,
+            unfocusedIndicatorColor = Color.Transparent,
+        ),
+        modifier = Modifier.fillMaxWidth(),
+    )
+
+    problem?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error) }
+
+    if (estimate != null) {
+        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            estimate.meal.items.forEach { item ->
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Column(Modifier.weight(1f)) {
+                        Text(item.name.ifBlank { "Food" }, style = MaterialTheme.typography.bodyLarge, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        Text(
+                            if (item.foodFacts != null) "${item.grams.format()} g · Open Food Facts label" else "${item.grams.format()} g · estimated",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                    Text(
+                        "${(item.kcalPer100 * item.grams / 100).format()} kcal",
+                        style = MaterialTheme.typography.labelLarge.merge(Numeric),
+                    )
+                }
+            }
+        }
+        val total = estimate.meal.items.sumOf { it.kcalPer100 * it.grams / 100 }
+        Text(
+            "Total ${total.format()} kcal" + (estimate.meal.notes.takeIf { it.isNotBlank() }?.let { " · $it" } ?: ""),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        PillSelector(MealType.entries, type, { it.title }, { type = it })
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            TextButton(onClick = { answer = null }, contentPadding = PaddingValues(horizontal = 4.dp)) { Text("Describe again") }
+            Spacer(Modifier.weight(1f))
+            LogButton(enabled = onLogEstimate != null) {
+                onLogEstimate?.invoke(estimate, type)
+                onLogged()
+            }
+        }
+    } else if (onEnterByHand != null) {
+        TextButton(onClick = onEnterByHand, contentPadding = PaddingValues(horizontal = 4.dp)) { Text("Enter calories yourself") }
     }
 }
