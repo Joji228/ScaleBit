@@ -130,6 +130,7 @@ fun SettingsScreen(
     val askBluetooth = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { }
     val scaleContext = LocalContext.current
     var photoDialog by remember { mutableStateOf(false) }
+    val pendingImport by viewModel.pendingImport.collectAsStateWithLifecycle()
     val photoStorage by viewModel.photoStorage.collectAsStateWithLifecycle()
     val storage by viewModel.storage.collectAsStateWithLifecycle()
 
@@ -628,6 +629,25 @@ fun SettingsScreen(
             dismissButton = { TextButton(onClick = { coachConfirm = false }) { Text(stringResource(R.string.cancel)) } },
         )
     }
+    pendingImport?.let { pending ->
+        val b = pending.backup
+        AlertDialog(
+            onDismissRequest = { viewModel.cancelImport() },
+            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+            title = { Text("Replace your data?") },
+            text = {
+                Text(
+                    "The backup has ${plural(b.meals.size, "meal")}, ${plural(b.weights.size, "weigh-in")} and " +
+                        "${plural(b.water.size, "water entry", "water entries")}. It replaces everything on this phone, " +
+                        "including your ${plural(pending.mealsNow, "meal")}. Meal photos aren't in backups. This can't be undone.",
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = { viewModel.confirmImport() }) { Text("Replace", color = MaterialTheme.colorScheme.error) }
+            },
+            dismissButton = { TextButton(onClick = { viewModel.cancelImport() }) { Text(stringResource(R.string.cancel)) } },
+        )
+    }
     if (resetDialog) {
         ResetDialog(
             onDismiss = { resetDialog = false },
@@ -699,6 +719,9 @@ internal fun SwitchRow(
         )
     }
 }
+
+/** "1 meal", "12 meals". */
+private fun plural(n: Int, one: String, many: String = "${one}s") = "$n ${if (n == 1) one else many}"
 
 /** Needs two taps on the red button, so a stray tap can't wipe months of data. */
 @Composable

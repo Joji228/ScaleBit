@@ -88,7 +88,7 @@ fun UpdateDialog(updater: AppUpdater, state: UpdateState, onDismiss: () -> Unit)
                     }
                 },
                 confirmButton = {
-                    Button(onClick = { scope.launch { updater.download() } }) { Text(stringResource(R.string.download)) }
+                    Button(onClick = { updater.startDownload() }) { Text(stringResource(R.string.download)) }
                 },
                 dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.not_now)) } },
             )

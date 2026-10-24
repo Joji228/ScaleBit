@@ -8,10 +8,14 @@ import android.net.Uri
 import android.provider.Settings
 import androidx.core.content.FileProvider
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -176,14 +180,29 @@ class AppUpdater(private val context: Context, client: OkHttpClient) {
         }
     }
 
+    /** Downloads outlive the screen that started them: closing the popup or leaving Settings mustn't stop one halfway. */
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    private var downloadJob: Job? = null
+
+    /**
+     * Starts downloading the version offered by [check], or returns the download already running.
+     * Wait on the job to know when it's done; cancelling the caller doesn't stop it.
+     */
+    fun startDownload(): Job {
+        downloadJob?.takeIf { it.isActive }?.let { return it }
+        return scope.launch { download() }.also { downloadJob = it }
+    }
+
     /** Downloads the version offered by [check]; the file is checked against its published SHA-256. */
-    suspend fun download() {
+    private suspend fun download() {
         val release = (_state.value as? UpdateState.Available)?.release ?: return
         _state.value = UpdateState.Downloading(release, 0f)
         try {
             val file = withContext(Dispatchers.IO) { fetchApk(release) }
             _state.value = UpdateState.Ready(release, file)
         } catch (e: CancellationException) {
+            // Never left showing "Downloading": the version can be offered and downloaded again.
+            _state.value = UpdateState.Available(release)
             throw e
         } catch (e: Exception) {
             _state.value = UpdateState.Failed("The download didn't finish: ${e.message.orEmpty()}")

@@ -175,7 +175,8 @@ class SettingsViewModel(private val app: AppContainer) : ViewModel() {
     /** Downloads the offered version, then opens Android's install prompt on its own. */
     fun downloadUpdate(context: Context) {
         viewModelScope.launch {
-            app.updater.download()
+            // The download itself runs in the updater, so leaving Settings doesn't cut it off.
+            app.updater.startDownload().join()
             if (app.updater.state.value is UpdateState.Ready) installUpdate(context)
         }
     }
@@ -326,19 +327,43 @@ class SettingsViewModel(private val app: AppContainer) : ViewModel() {
         }
     }
 
+    /** A backup file that was read and checked, waiting for the user to confirm it replaces their data. */
+    val pendingImport = MutableStateFlow<PendingImport?>(null)
+
+    /** Reads and checks the file. Nothing on the phone changes until [confirmImport]. */
     fun import(context: Context, uri: Uri) {
         viewModelScope.launch {
             runCatching {
                 val text = withContext(Dispatchers.IO) {
                     context.contentResolver.openInputStream(uri)?.use { it.readBytes().decodeToString() } ?: error("Couldn't open the file")
                 }
-                val backup = json.decodeFromString(Backup.serializer(), text)
-                app.repository.restore(backup)
-                backup.profile?.let { app.settings.saveProfile(it) }
-                backup.settings?.let { app.settings.restore(it) }
-                backup
-            }.onSuccess { message.value = "Imported ${it.meals.size} meals" }
+                val backup = runCatching { json.decodeFromString(Backup.serializer(), text) }
+                    .getOrElse { error("That file isn't a ScaleBit backup. Nothing was changed.") }
+                backup.problem()?.let { error(it) }
+                PendingImport(backup, app.repository.mealCount())
+            }.onSuccess { pendingImport.value = it }
                 .onFailure { message.value = "Import failed: ${it.message}" }
         }
     }
+
+    fun cancelImport() {
+        pendingImport.value = null
+    }
+
+    /** Replaces everything on the phone with the checked backup. */
+    fun confirmImport() {
+        val backup = pendingImport.value?.backup ?: return
+        pendingImport.value = null
+        viewModelScope.launch {
+            runCatching {
+                app.repository.restore(backup)
+                backup.profile?.let { app.settings.saveProfile(it) }
+                backup.settings?.let { app.settings.restore(it) }
+            }.onSuccess { message.value = "Imported ${backup.meals.size} meals" }
+                .onFailure { message.value = "Import failed: ${it.message}. Nothing was changed." }
+        }
+    }
 }
+
+/** [mealsNow] is how many meals the phone has before the import replaces them. */
+data class PendingImport(val backup: Backup, val mealsNow: Int)
