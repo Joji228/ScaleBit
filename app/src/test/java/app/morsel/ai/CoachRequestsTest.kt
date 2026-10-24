@@ -82,6 +82,24 @@ class CoachRequestsTest {
     }
 
     @Test
+    fun theCoachStaysOnHealthAndFitnessAndSuggestsFollowUps() {
+        assertTrue(CoachPrompt.SYSTEM.contains("What you talk about:"))
+        assertTrue(CoachPrompt.SYSTEM.contains("you can only help with their health, fitness and ScaleBit data"))
+        assertTrue(CoachPrompt.SYSTEM.contains("<suggestions>"))
+    }
+
+    @Test
+    fun suggestionsAreNeverSentBackToTheAi() {
+        val answered = listOf(
+            CoachMessage(true, "How am I doing?"),
+            CoachMessage(false, "Great.", suggestions = listOf("What about protein?")),
+            CoachMessage(true, "Thanks"),
+        )
+        val body = CoachRequests.openAiCompatible(Provider.DEEPSEEK, "m", system, answered, null).toString()
+        assertFalse(body.contains("What about protein?"))
+    }
+
+    @Test
     fun claudeKeepsTheClockOutOfTheCachedBlock() {
         val withClock = CoachPrompt.system("# Data\nmeals...") + CoachContext.NOW_MARKER + "Friday 2026-10-23 12:34.\n"
         val blocks = CoachRequests.anthropic("claude-haiku", withClock, chat)["system"]!!.jsonArray.map { it.jsonObject }

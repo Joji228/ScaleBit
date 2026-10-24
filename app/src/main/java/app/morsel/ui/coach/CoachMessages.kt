@@ -1,5 +1,6 @@
 package app.morsel.ui.coach
 
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.ui.res.stringResource
 import app.morsel.R
 import androidx.compose.foundation.background
@@ -108,7 +109,7 @@ import app.morsel.ui.components.rememberHaptics
 import app.morsel.ui.components.RoundIconButton
 
 @Composable
-internal fun EmptyCoach(onPick: (String) -> Unit) {
+internal fun EmptyCoach(questions: List<String>, onPick: (String) -> Unit) {
     Column(
         Modifier
             .fillMaxSize()
@@ -135,7 +136,7 @@ internal fun EmptyCoach(onPick: (String) -> Unit) {
         )
         Spacer(Modifier.height(24.dp))
         Column(verticalArrangement = Arrangement.spacedBy(8.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-            CoachSuggestions.forEach { question ->
+            questions.forEach { question ->
                 Surface(
                     onClick = { onPick(question) },
                     shape = RoundedCornerShape(16.dp),
@@ -517,3 +518,36 @@ internal fun InputBar(value: String, onChange: (String) -> Unit, canSend: Boolea
         )
     }
 }
+
+/**
+ * The coach's suggested next questions: plain outlined pills in one row that scrolls sideways,
+ * deliberately quieter than the proposal cards. Tapping one asks it.
+ */
+@Composable
+internal fun FollowUpPills(questions: List<String>, onPick: (String) -> Unit) {
+    LazyRow(
+        contentPadding = PaddingValues(horizontal = 16.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(top = 2.dp, bottom = 4.dp),
+    ) {
+        items(questions) { question ->
+            Surface(
+                onClick = { onPick(question) },
+                shape = RoundedCornerShape(50),
+                color = Color.Transparent,
+                contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+            ) {
+                Text(
+                    question,
+                    style = MaterialTheme.typography.labelLarge,
+                    maxLines = 1,
+                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 7.dp),
+                )
+            }
+        }
+    }
+}
+

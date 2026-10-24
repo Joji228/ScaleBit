@@ -1,5 +1,6 @@
 package app.morsel.ui.settings
 
+import app.morsel.domain.Nutrition
 import androidx.compose.ui.res.stringResource
 import app.morsel.R
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -82,9 +83,6 @@ import app.morsel.data.Provider
 import app.morsel.data.ThemeMode
 import app.morsel.update.UpdateState
 import androidx.compose.material.icons.rounded.Search
-import androidx.core.content.ContextCompat
-import android.content.pm.PackageManager
-import android.Manifest
 import androidx.compose.material.icons.rounded.Forum
 import androidx.compose.material.icons.rounded.MonitorWeight
 import androidx.compose.foundation.border
@@ -113,6 +111,7 @@ fun SettingsScreen(
     onBack: () -> Unit,
     onEditProfile: () -> Unit,
     onAiEngine: () -> Unit,
+    onDevices: () -> Unit,
     onReset: () -> Unit,
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
@@ -124,11 +123,7 @@ fun SettingsScreen(
     var targetDialog by remember { mutableStateOf(false) }
     var waterDialog by remember { mutableStateOf(false) }
     var resetDialog by remember { mutableStateOf(false) }
-    var scaleConfirm by remember { mutableStateOf(false) }
     var coachConfirm by remember { mutableStateOf(false) }
-    // Hands-free weigh-ins need the Bluetooth scan permission; asked right when the scale is turned on.
-    val askBluetooth = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { }
-    val scaleContext = LocalContext.current
     var photoDialog by remember { mutableStateOf(false) }
     val pendingImport by viewModel.pendingImport.collectAsStateWithLifecycle()
     val photoStorage by viewModel.photoStorage.collectAsStateWithLifecycle()
@@ -373,22 +368,17 @@ fun SettingsScreen(
                 )
             }
 
-            item { GroupLabel("Devices") }
+            item { GroupLabel("More") }
             item {
                 GroupedList(
                     rows = listOf(
                         {
-                            SwitchRow(
-                                title = "Xiaomi smart scale",
-                                subtitle = if (state.scaleEnabled) {
-                                    "On. Open ScaleBit and step on the scale; weigh-ins save by themselves"
-                                } else {
-                                    "For the Mi Body Composition Scale 2 (XMTZC05HM). Adds weigh-ins over Bluetooth and a Body screen"
-                                },
-                                checked = state.scaleEnabled,
-                                // Turning it on asks first; turning it off doesn't need to.
-                                onChange = { on -> if (on) scaleConfirm = true else viewModel.setScaleEnabled(false) },
+                            // The smart scale lives one level down: it only matters to people with that exact scale.
+                            ListRow(
+                                "Devices",
+                                subtitle = "Smart scale: ${if (state.scaleEnabled) "on" else "off"}",
                                 icon = Icons.Rounded.MonitorWeight,
+                                onClick = onDevices,
                             )
                         },
                     ),
@@ -501,7 +491,22 @@ fun SettingsScreen(
             onDismissRequest = { targetDialog = false },
             containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
             title = { Text(stringResource(R.string.daily_calories)) },
-            text = { NumberStepper("Target", kcal, { kcal = it }, 800.0..6000.0, 50.0, "kcal") },
+            text = {
+                Column {
+                    NumberStepper("Target", kcal, { kcal = it }, 800.0..6000.0, 50.0, "kcal")
+                    // Still allowed (a doctor may prescribe it), but never without saying so.
+                    val minimum = Nutrition.minimumKcal(profile?.sex ?: Sex.MALE)
+                    if (kcal < minimum) {
+                        Spacer(Modifier.height(12.dp))
+                        Text(
+                            "That's below ${minimum.format()} kcal, the usual safe minimum for " +
+                                "${if (profile?.sex == Sex.FEMALE) "women" else "men"}. Only eat this little with a doctor's guidance.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.error,
+                        )
+                    }
+                }
+            },
             confirmButton = {
                 TextButton(onClick = {
                     viewModel.updateProfile { it.copy(customKcal = kcal.toInt()) }
@@ -574,34 +579,6 @@ fun SettingsScreen(
             dismissButton = {
                 if (count > 0) TextButton(onClick = { photoDialog = false }) { Text(stringResource(R.string.cancel)) }
             },
-        )
-    }
-    if (scaleConfirm) {
-        AlertDialog(
-            onDismissRequest = { scaleConfirm = false },
-            title = { Text(stringResource(R.string.turn_on_the_smart_scale)) },
-            text = {
-                Text(
-                    stringResource(R.string.this_works_only_with_the_xiaomi) +
-                        "with metal pads on top. Other Xiaomi scales won't be recognized.\n\n" +
-                        "While ScaleBit is open on your screen, it listens for the scale and saves each weigh-in by itself, " +
-                        "with no button to press. It never listens in the background. There's nothing to pair, it never needs " +
-                        "your location, and the Zepp Life app keeps working as before. A weigh-in more than 5 kg from your " +
-                        "last one is checked with you first, in case someone else stepped on.\n\n" +
-                        "You'll also get a Body screen with body fat, muscle, water and more. " +
-                        "These are estimates for following trends, not medical measurements.",
-                )
-            },
-            confirmButton = {
-                TextButton(onClick = {
-                    viewModel.setScaleEnabled(true)
-                    scaleConfirm = false
-                    if (ContextCompat.checkSelfPermission(scaleContext, Manifest.permission.BLUETOOTH_SCAN) != PackageManager.PERMISSION_GRANTED) {
-                        askBluetooth.launch(Manifest.permission.BLUETOOTH_SCAN)
-                    }
-                }) { Text(stringResource(R.string.turn_on)) }
-            },
-            dismissButton = { TextButton(onClick = { scaleConfirm = false }) { Text(stringResource(R.string.cancel)) } },
         )
     }
     if (coachConfirm) {

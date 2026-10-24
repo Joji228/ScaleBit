@@ -1,5 +1,6 @@
 package app.morsel.ui.body
 
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.stringResource
 import app.morsel.R
 import androidx.compose.animation.animateContentSize
@@ -104,7 +105,6 @@ import app.morsel.ui.components.format
 import app.morsel.ui.theme.Numeric
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
-import java.util.Locale
 import kotlin.math.abs
 
 private enum class Span(val label: String, val days: Long?) { M1("1M", 30), M3("3M", 90), Y1("1Y", 365), ALL("All", null) }
@@ -313,7 +313,7 @@ private fun MeasurementBar(entry: ScanEntry, index: Int, count: Int, onOlder: ()
         Column(Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
             val time = Instant.ofEpochMilli(entry.timestamp).atZone(ZoneId.systemDefault())
             Text(
-                time.format(DateTimeFormatter.ofPattern("EEE d MMM · HH:mm", Locale.getDefault())),
+                time.format(DateTimeFormatter.ofPattern("EEE d MMM · HH:mm", LocalConfiguration.current.locales[0])),
                 style = MaterialTheme.typography.titleSmall.merge(Numeric),
             )
             Text(

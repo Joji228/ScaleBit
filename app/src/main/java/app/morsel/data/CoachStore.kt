@@ -17,6 +17,8 @@ data class CoachMessage(
     val text: String,
     val at: Long = System.currentTimeMillis(),
     val actions: List<CoachAction> = emptyList(),
+    /** Follow-up questions offered after a coach answer (see CoachFollowUps); never sent back to the AI. */
+    val suggestions: List<String> = emptyList(),
 )
 
 /**

@@ -46,7 +46,7 @@ New in 1.3. Turn on **Settings → AI coach**, then pull down on the Diary, Scan
 
 ## Optional: Xiaomi smart scale
 
-New in 1.0. If you have a **Xiaomi Mi Body Composition Scale 2** (model **XMTZC05HM**), turn on **Settings → Smart scale** and ScaleBit reads it directly:
+New in 1.0. If you have a **Xiaomi Mi Body Composition Scale 2** (model **XMTZC05HM**), turn it on in **Settings → Devices** and ScaleBit reads it directly:
 
 - ⚖️ **Hands-free weigh-ins.** Open ScaleBit and step on the scale barefoot: a full-screen dial follows your weight while it measures, then the weigh-in is saved by itself. It only listens while the app is open, there's nothing to pair, no Xiaomi account, and Zepp Life keeps working. A reading more than 5 kg from your last one asks "Is this you?" first.
 - 🧍 **Body screen.** Tap the Weight card for a body score, BMI, and estimates of body fat, muscle, water, bone, visceral fat, BMR and body age, with trends over time. Swipe sideways to step through past measurements, and the screenshot button saves the whole page as one picture in your gallery (Pictures/ScaleBit), handy for comparing over time.

@@ -1,5 +1,6 @@
 package app.morsel.ui.dashboard
 
+import androidx.compose.runtime.mutableDoubleStateOf
 import androidx.compose.ui.res.stringResource
 import app.morsel.R
 import androidx.compose.foundation.clickable
@@ -453,7 +454,7 @@ private fun DescribeFood(
     val lines = remember { mutableStateListOf<DescribeLine>() }
     var recents by remember { mutableStateOf<List<AiItem>>(emptyList()) }
     var type by remember { mutableStateOf(MealType.forTime()) }
-    var portion by remember { mutableStateOf(1.0) }
+    var portion by remember { mutableDoubleStateOf(1.0) }
 
     LaunchedEffect(recent) { recents = recent?.invoke() ?: emptyList() }
 
