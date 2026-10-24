@@ -1,5 +1,6 @@
 package app.morsel.ui.onboarding
 
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.AlertDialog
 import androidx.compose.ui.res.stringResource
@@ -69,7 +70,6 @@ import app.morsel.ui.theme.Numeric
 import app.morsel.ui.theme.Nutrient
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
-import java.util.Locale
 import kotlin.math.roundToLong
 
 @Composable
@@ -299,7 +299,7 @@ private fun Plan(state: OnboardingState) {
         )
         targets.weeksToGoal?.let { weeks ->
             val date = LocalDate.now().plusDays((weeks * 7).roundToLong())
-            PlanLine("Goal reached around", date.format(DateTimeFormatter.ofPattern("MMM d, yyyy", Locale.getDefault())))
+            PlanLine("Goal reached around", date.format(DateTimeFormatter.ofPattern("MMM d, yyyy", LocalConfiguration.current.locales[0])))
         }
         PlanLine("Water goal", "${(targets.waterMl / 1000.0).format(2).trimEnd('0').trimEnd('.', ',')} L a day")
     }

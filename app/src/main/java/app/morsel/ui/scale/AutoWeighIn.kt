@@ -1,5 +1,7 @@
 package app.morsel.ui.scale
 
+import androidx.compose.runtime.mutableDoubleStateOf
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.stringResource
 import app.morsel.R
 import androidx.activity.compose.BackHandler
@@ -181,7 +183,7 @@ fun AutoWeighIn(container: AppContainer, onOpenBody: () -> Unit) {
         exit = fadeOut(tween(200)),
     ) {
         // Keeps the last weight while fading out.
-        var shownKg by remember { mutableStateOf(kg ?: 0.0) }
+        var shownKg by remember { mutableDoubleStateOf(kg ?: 0.0) }
         kg?.let { shownKg = it }
         BackHandler { dismissed = true }
         ScaleScreen(kg = shownKg, stage = stage, onClose = { dismissed = true })
@@ -255,7 +257,7 @@ private fun ScaleScreen(kg: Double, stage: Stage, onClose: () -> Unit) {
                 // In the open bottom of the dial, clear of the needle.
                 Row(Modifier.align(Alignment.BottomCenter).padding(bottom = 4.dp), verticalAlignment = Alignment.Bottom) {
                     Text(
-                        String.format(Locale.getDefault(), "%.1f", shown),
+                        String.format(LocalConfiguration.current.locales[0], "%.1f", shown),
                         style = MaterialTheme.typography.displayLarge.merge(Numeric).copy(fontSize = 64.sp),
                     )
                     Spacer(Modifier.width(6.dp))

@@ -38,10 +38,9 @@ jobs:
       - name: Debug build
         run: ./gradlew --no-daemon assembleDebug
 
-      # Reported, not enforced yet: the existing code has never been linted in CI.
+      # Lint errors fail the build; warnings are only reported.
       - name: Lint
         run: ./gradlew --no-daemon lintDebug
-        continue-on-error: true
 
       - name: Lint findings
         if: always()

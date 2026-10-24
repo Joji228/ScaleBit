@@ -1,5 +1,6 @@
 package app.morsel.ui.dashboard
 
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.stringResource
 import app.morsel.R
 import androidx.compose.animation.core.FastOutLinearInEasing
@@ -386,7 +387,7 @@ private fun Header(date: LocalDate, today: LocalDate, onPrev: () -> Unit, onNext
     val title = when (date) {
         today -> "Today"
         today.minusDays(1) -> "Yesterday"
-        else -> date.format(DateTimeFormatter.ofPattern("EEE, MMM d", Locale.getDefault()))
+        else -> date.format(DateTimeFormatter.ofPattern("EEE, MMM d", LocalConfiguration.current.locales[0]))
     }
     Row(
         Modifier
@@ -396,7 +397,7 @@ private fun Header(date: LocalDate, today: LocalDate, onPrev: () -> Unit, onNext
     ) {
         Column(Modifier.weight(1f)) {
             Text(
-                date.format(DateTimeFormatter.ofPattern("EEEE, MMMM d", Locale.getDefault())),
+                date.format(DateTimeFormatter.ofPattern("EEEE, MMMM d", LocalConfiguration.current.locales[0])),
                 style = MaterialTheme.typography.labelLarge,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )

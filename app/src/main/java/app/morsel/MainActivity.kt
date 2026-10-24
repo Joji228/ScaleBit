@@ -1,5 +1,6 @@
 package app.morsel
 
+import android.annotation.SuppressLint
 import android.os.Bundle
 import android.view.KeyEvent
 import androidx.activity.ComponentActivity
@@ -183,6 +184,9 @@ class MainActivity : ComponentActivity() {
     }
 }
 
+// The bottom bar floats over the tab screens, which keep their own space for it (see barSpace), so
+// the Scaffold's content padding is deliberately left unused.
+@SuppressLint("UnusedMaterial3ScaffoldPaddingParameter")
 @Composable
 private fun MorselNavHost(container: AppContainer, start: Any) {
     val nav = rememberNavController()
