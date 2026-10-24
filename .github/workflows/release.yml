@@ -28,10 +28,13 @@ jobs:
           distribution: temurin
           java-version: 21
 
-      - uses: android-actions/setup-android@v3
-
-      - name: Install the Android platform the app compiles against
-        run: sdkmanager --install "platforms;android-37" "platform-tools"
+      # The runner image ships the Android SDK; only the platform the app compiles against is added.
+      - name: Install the Android platform
+        run: |
+          sdkmanager="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
+          [ -x "$sdkmanager" ] || sdkmanager="$(ls -d "$ANDROID_HOME"/cmdline-tools/*/bin/sdkmanager | sort -V | tail -1)"
+          yes | "$sdkmanager" --licenses > /dev/null || true
+          "$sdkmanager" --install "platforms;android-37" "platform-tools"
 
       - uses: gradle/actions/setup-gradle@v4
 
