@@ -52,6 +52,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.Search
+import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -422,10 +423,13 @@ data class DescribedMeal(
 /** One food line in the Add food box; the id keeps its grams field stable while others change. */
 private class DescribeLine(val id: Long, val item: AiItem)
 
+/** The portion choices, the same as on a scan's result. */
+private val describePortions = listOf(0.5, 1.0, 1.5, 2.0)
+
 /**
- * The Add food box in plain words: describe what you ate. The AI engine estimates each item,
- * branded products take their label values from Open Food Facts, recent foods can be added with a
- * tap, and grams can be corrected before the meal is logged as one.
+ * The Add food box: describe what you ate, then "Work it out with AI" estimates it. "Enter manually"
+ * fills in the calories yourself. Recent foods can be added with a tap, grams and portion adjusted,
+ * and the meal is logged as one.
  */
 @Composable
 private fun DescribeFood(
@@ -445,6 +449,7 @@ private fun DescribeFood(
     val lines = remember { mutableStateListOf<DescribeLine>() }
     var recents by remember { mutableStateOf<List<AiItem>>(emptyList()) }
     var type by remember { mutableStateOf(MealType.forTime()) }
+    var portion by remember { mutableStateOf(1.0) }
 
     LaunchedEffect(recent) { recents = recent?.invoke() ?: emptyList() }
 
@@ -464,6 +469,7 @@ private fun DescribeFood(
                     notes = estimate.meal.notes.takeIf { it.isNotBlank() }
                     aiSource = estimate.sourceLabel ?: "${estimate.provider.title} · ${estimate.model}"
                     type = MealType.entries.firstOrNull { it.name.equals(estimate.meal.mealType, ignoreCase = true) } ?: MealType.forTime()
+                    portion = 1.0
                 }
             } catch (e: CancellationException) {
                 throw e
@@ -478,16 +484,7 @@ private fun DescribeFood(
     TextField(
         text,
         { text = it },
-        placeholder = { Text(stringResource(R.string.describe_what_you_ate_e_g)) },
-        trailingIcon = {
-            if (busy) {
-                CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp)
-            } else {
-                IconButton(onClick = { estimate() }, enabled = text.isNotBlank()) {
-                    Icon(Icons.AutoMirrored.Rounded.Send, "Estimate")
-                }
-            }
-        },
+        placeholder = { Text("Describe what you ate, e.g. 2 eggs, toast with butter and a latte") },
         keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
         keyboardActions = KeyboardActions(onSend = { estimate() }),
         minLines = 2,
@@ -506,7 +503,7 @@ private fun DescribeFood(
 
     if (recents.isNotEmpty()) {
         Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            Text(stringResource(R.string.recent), style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text("Recent", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
             Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 recents.forEach { food ->
                     Surface(
@@ -542,7 +539,7 @@ private fun DescribeFood(
                             lines[index] = DescribeLine(line.id, line.item.copy(grams = grams))
                         }
                         Text(
-                            "${(line.item.kcalPer100 * line.item.grams / 100).format()} kcal",
+                            "${(line.item.kcalPer100 * line.item.grams / 100 * portion).format()} kcal",
                             style = MaterialTheme.typography.labelLarge.merge(Numeric),
                             modifier = Modifier.padding(start = 8.dp),
                         )
@@ -553,7 +550,13 @@ private fun DescribeFood(
                 }
             }
         }
-        val total = lines.sumOf { it.item.kcalPer100 * it.item.grams / 100 }
+        PillSelector(
+            describePortions,
+            portion,
+            { if (it == 0.5) "½×" else "${it.format(if (it % 1.0 == 0.0) 0 else 1)}×" },
+            { portion = it },
+        )
+        val total = lines.sumOf { it.item.kcalPer100 * it.item.grams / 100 } * portion
         Text(
             "Total ${total.format()} kcal" + (notes?.let { " · $it" } ?: ""),
             style = MaterialTheme.typography.bodySmall,
@@ -566,15 +569,16 @@ private fun DescribeFood(
                     lines.clear()
                     notes = null
                     aiSource = null
+                    portion = 1.0
                 },
                 contentPadding = PaddingValues(horizontal = 4.dp),
-            ) { Text(stringResource(R.string.clear)) }
+            ) { Text("Clear") }
             Spacer(Modifier.weight(1f))
             LogButton(enabled = onLogEstimate != null && lines.isNotEmpty()) {
                 onLogEstimate?.invoke(
                     DescribedMeal(
                         name = name.ifBlank { lines.first().item.name },
-                        items = lines.map { it.item },
+                        items = lines.map { it.item.copy(grams = it.item.grams * portion) },
                         type = type,
                         aiSource = aiSource,
                         notes = notes,
@@ -583,8 +587,16 @@ private fun DescribeFood(
                 onLogged()
             }
         }
-    } else if (onEnterByHand != null) {
-        TextButton(onClick = onEnterByHand, contentPadding = PaddingValues(horizontal = 4.dp)) { Text(stringResource(R.string.enter_calories_yourself)) }
+    }
+
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        if (onEnterByHand != null) {
+            TextButton(onClick = onEnterByHand, contentPadding = PaddingValues(horizontal = 4.dp)) { Text("Enter manually") }
+        }
+        Spacer(Modifier.weight(1f))
+        Button(onClick = { estimate() }, enabled = text.isNotBlank() && !busy) {
+            Text(if (busy) "Working it out…" else "Work it out with AI")
+        }
     }
 }
 
@@ -599,7 +611,7 @@ private fun GramsField(grams: Double, onChange: (Double) -> Unit) {
             typed.replace(',', '.').toDoubleOrNull()?.let(onChange)
         },
         singleLine = true,
-        suffix = { Text(stringResource(R.string.g)) },
+        suffix = { Text("g") },
         textStyle = MaterialTheme.typography.bodyMedium,
         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
         shape = RoundedCornerShape(12.dp),

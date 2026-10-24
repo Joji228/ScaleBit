@@ -221,11 +221,11 @@ fun SettingsScreen(
                         {
                             val greek by viewModel.greekTuning.collectAsStateWithLifecycle(initialValue = true)
                             SwitchRow(
-                                title = "Greek foods and brands",
+                                title = "Regional food hints",
                                 subtitle = if (greek) {
-                                    "On. Scans, the coach and food search expect Greek dishes and brands"
+                                    "On. Hints for Greek and European foods. International dishes and brands still work"
                                 } else {
-                                    "Off. Foods are estimated without regional hints"
+                                    "Off. Foods are estimated with no regional hints"
                                 },
                                 checked = greek,
                                 onChange = viewModel::setGreekTuning,

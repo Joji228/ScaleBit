@@ -544,3 +544,20 @@ internal fun WeightEntity.compositionLine(profile: UserProfile?): String? {
     val c = profile?.let { BodyCompositionCalc.compute(kg, impedance, it) } ?: return null
     return "Fat ${c.fatPct.format(1)} % · Muscle ${c.musclePct(kg).format(1)} % · Water ${c.waterPct.format(1)} %"
 }
+
+/** The small blue "Log food" button: opens the Add food box. */
+@Composable
+internal fun LogFoodButton(onClick: () -> Unit) {
+    Surface(
+        onClick = onClick,
+        shape = RoundedCornerShape(50),
+        color = MaterialTheme.colorScheme.primary,
+        contentColor = MaterialTheme.colorScheme.onPrimary,
+    ) {
+        Text(
+            "Log food",
+            style = MaterialTheme.typography.labelLarge,
+            modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp),
+        )
+    }
+}

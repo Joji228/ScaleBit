@@ -99,6 +99,11 @@ Respond ONLY with JSON in exactly this shape:
 {"meal_name": "2-4 word name", "meal_type": "breakfast|lunch|dinner|snack", "items": [{"name": "food", "grams": 150, "kcal_per_100g": 165, "protein_per_100g": 31, "carbs_per_100g": 0, "fat_per_100g": 3.6, "product": ""}], "confidence": "low|medium|high", "notes": "one short sentence about assumptions"}
 If there is no food, return {"meal_name": "", "items": [], "confidence": "low", "notes": "No food found"}."""
 
+    /** Text-only descriptions: a short prompt and a compact answer, grouped into a few items. */
+    const val TEXT_SYSTEM = """Estimate the food the user describes. Reply ONLY with JSON in this shape:
+{"meal_name": "2-4 words", "meal_type": "breakfast|lunch|dinner|snack", "items": [{"name": "short name", "grams": 100, "kcal_per_100g": 100, "protein_per_100g": 5, "carbs_per_100g": 10, "fat_per_100g": 3, "product": ""}], "confidence": "low|medium|high", "notes": "one short sentence"}
+Rules: at most 4 items; group sides and sauces into the dish they belong to; use the grams the user gives, else a realistic portion; set product to the brand and product name only for a named packaged product; keep names short and in English."""
+
     fun user(note: String?, imageCount: Int): String = buildString {
         append(
             when (imageCount) {
@@ -141,7 +146,8 @@ class AiService(private val settings: SettingsRepository, client: OkHttpClient) 
         for (provider in usable) {
             try {
                 val model = resolveModel(provider, ai)
-                val raw = complete(provider, ai, model, images, Prompts.user(note, images.size))
+                val system = if (images.isEmpty()) Prompts.TEXT_SYSTEM else Prompts.SYSTEM
+                val raw = complete(provider, ai, model, images, Prompts.user(note, images.size), system)
                 return AnalysisResult(parse(raw), provider, model, errors.joinToString("\n").ifBlank { null })
             } catch (e: CancellationException) {
                 throw e
@@ -361,19 +367,20 @@ class AiService(private val settings: SettingsRepository, client: OkHttpClient) 
         model: String,
         images: List<ByteArray>,
         userText: String,
+        system: String = Prompts.SYSTEM,
     ): String = withContext(Dispatchers.IO) {
         val key = ai.keyFor(provider)
         if (provider.needsBaseUrl) UrlPolicy.problem(ai.baseUrlFor(provider))?.let { throw AiException(it) }
         val encoded = images.map { Base64.encodeToString(it, Base64.NO_WRAP) }
         when (provider.kind) {
-            ApiKind.GEMINI -> gemini(key, model, encoded, userText)
-            ApiKind.ANTHROPIC -> anthropic(provider, key, model, encoded, userText)
+            ApiKind.GEMINI -> gemini(key, model, encoded, userText, system)
+            ApiKind.ANTHROPIC -> anthropic(provider, key, model, encoded, userText, system)
             ApiKind.OPENAI_COMPATIBLE -> try {
-                openAiCompatible(provider, ai.baseUrlFor(provider), key, model, encoded, userText, strict = true, thinking = ai.thinkingFor(provider))
+                openAiCompatible(provider, ai.baseUrlFor(provider), key, model, encoded, userText, strict = true, thinking = ai.thinkingFor(provider), system = system)
             } catch (e: HttpException) {
                 // Some models reject response_format or a custom temperature; retry once without them.
                 if (e.code == 400 || e.code == 422) {
-                    openAiCompatible(provider, ai.baseUrlFor(provider), key, model, encoded, userText, strict = false, thinking = ai.thinkingFor(provider))
+                    openAiCompatible(provider, ai.baseUrlFor(provider), key, model, encoded, userText, strict = false, thinking = ai.thinkingFor(provider), system = system)
                 } else {
                     throw e
                 }
@@ -382,12 +389,12 @@ class AiService(private val settings: SettingsRepository, client: OkHttpClient) 
     }
 
     /** Claude's Messages API: images are base64 blocks, and the answer is a list of text blocks. */
-    private suspend fun anthropic(provider: Provider, key: String, model: String, images: List<String>, userText: String): String {
+    private suspend fun anthropic(provider: Provider, key: String, model: String, images: List<String>, userText: String, system: String): String {
         val body = buildJsonObject {
             put("model", model)
             put("max_tokens", 2048)
             put("temperature", 0.2)
-            put("system", Prompts.SYSTEM)
+            put("system", system)
             putJsonArray("messages") {
                 addJsonObject {
                     put("role", "user")
@@ -421,10 +428,10 @@ class AiService(private val settings: SettingsRepository, client: OkHttpClient) 
         return text.ifBlank { throw AiException("${provider.title} returned no answer") }
     }
 
-    private suspend fun gemini(key: String, model: String, images: List<String>, userText: String): String {
+    private suspend fun gemini(key: String, model: String, images: List<String>, userText: String, system: String): String {
         val body = buildJsonObject {
             putJsonObject("system_instruction") {
-                putJsonArray("parts") { addJsonObject { put("text", Prompts.SYSTEM) } }
+                putJsonArray("parts") { addJsonObject { put("text", system) } }
             }
             putJsonArray("contents") {
                 addJsonObject {
@@ -474,6 +481,7 @@ class AiService(private val settings: SettingsRepository, client: OkHttpClient) 
         strict: Boolean,
         /** DeepSeek only: turns its thinking off or sets how hard it thinks. */
         thinking: ThinkingLevel? = null,
+        system: String = Prompts.SYSTEM,
     ): String {
         val body = buildJsonObject {
             put("model", model)
@@ -484,7 +492,7 @@ class AiService(private val settings: SettingsRepository, client: OkHttpClient) 
             putJsonArray("messages") {
                 addJsonObject {
                     put("role", "system")
-                    put("content", Prompts.SYSTEM)
+                    put("content", system)
                 }
                 addJsonObject {
                     put("role", "user")

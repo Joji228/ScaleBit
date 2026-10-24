@@ -294,7 +294,7 @@ fun DashboardScreen(
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                     Spacer(Modifier.width(10.dp))
-                    RoundIconButton(Icons.Rounded.Add, "Add food", { showQuickAdd = true }, size = 36.dp)
+                    LogFoodButton { showQuickAdd = true }
                 }
             }
             if (state.meals.isEmpty() && !state.loading) {
@@ -423,7 +423,7 @@ private fun Header(date: LocalDate, today: LocalDate, onPrev: () -> Unit, onNext
             }
         }
         onQuickAdd?.let {
-            RoundIconButton(Icons.Rounded.Add, "Quick add a food", it, size = 44.dp)
+            LogFoodButton(it)
             Spacer(Modifier.width(8.dp))
         }
         RoundIconButton(Icons.Rounded.Settings, "Settings", onSettings, size = 44.dp)
