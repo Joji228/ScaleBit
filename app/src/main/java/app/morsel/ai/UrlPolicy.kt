@@ -29,6 +29,11 @@ object UrlPolicy {
     fun isLocal(host: String): Boolean {
         val h = host.trim('[', ']')
         if (h == "localhost" || h.endsWith(".local") || h == "::1") return true
+        if (':' in h) {
+            // IPv6: unique local (fc00::/7) and link-local (fe80::/10) addresses stay on your network.
+            val first = h.substringBefore(':').toIntOrNull(16) ?: return false
+            return first in 0xfc00..0xfdff || first in 0xfe80..0xfebf
+        }
         val parts = h.split('.').mapNotNull { it.toIntOrNull() }
         if (parts.size != 4 || h.count { it == '.' } != 3) return false
         val (a, b) = parts

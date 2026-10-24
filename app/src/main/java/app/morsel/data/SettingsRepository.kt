@@ -18,6 +18,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
+import java.time.LocalDate
 import java.security.KeyStore
 import javax.crypto.Cipher
 import javax.crypto.KeyGenerator
@@ -72,7 +73,7 @@ class SettingsRepository(context: Context) {
     private fun modelPref(provider: Provider) = stringPreferencesKey("${provider.prefix}_model")
 
     val profile: Flow<UserProfile?> = store.data.map { prefs ->
-        prefs[profileKey]?.let { runCatching { json.decodeFromString<UserProfile>(it) }.getOrNull() }
+        prefs[profileKey]?.let { runCatching { json.decodeFromString<UserProfile>(it) }.getOrNull() }?.agedTo(LocalDate.now())
     }
 
     val theme: Flow<ThemeMode> = store.data.map { prefs ->
@@ -136,7 +137,6 @@ class SettingsRepository(context: Context) {
 
     suspend fun backup(): SettingsBackup = backupOf(store.data.first())
 
-
     /** Puts restored settings in place. Missing values (older backups) leave the current ones alone. */
     suspend fun restore(backup: SettingsBackup) {
         store.edit { prefs ->
@@ -154,12 +154,7 @@ class SettingsRepository(context: Context) {
         }
     }
 
-    /**
-     * One-time cleanups of choices made by older versions:
-     * - Version 1.0 saved its automatic model pick, locking DeepSeek onto the legacy
-     *   "deepseek-chat" alias. Clear those so "Automatic" really is automatic.
-     * - Fallback used to be on by default. It is now off, so reset whatever was stored once.
-     */
+    /** Adds one reply's tokens to the usage log the day and week limits are checked against. */
     suspend fun recordAiTokens(tokens: Long, now: Long) {
         store.edit { prefs -> prefs[usageKey] = TokenBudget.add(prefs[usageKey].orEmpty(), now, tokens, now) }
     }
@@ -230,11 +225,11 @@ class SettingsRepository(context: Context) {
         store.edit { it[foodFactsKey] = enabled }
     }
 
-    /** Turning the coach on also brings back its one-time "pull down" hint. */
     suspend fun setHapticsEnabled(enabled: Boolean) {
         store.edit { it[hapticsKey] = enabled }
     }
 
+    /** Turning the coach on also brings back its one-time "pull down" hint. */
     suspend fun setCoachEnabled(enabled: Boolean) {
         store.edit {
             it[coachKey] = enabled

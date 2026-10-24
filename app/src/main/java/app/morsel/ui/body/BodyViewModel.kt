@@ -52,7 +52,7 @@ class BodyViewModel(private val app: AppContainer) : ViewModel() {
     private fun build(profile: UserProfile, weighIns: List<WeightEntity>, today: LocalDate): BodyState {
         if (weighIns.isEmpty()) return BodyState(loading = false, profile = profile, today = today)
         // Everything is worked out again from the stored weight and impedance, so improvements to
-        // the formulas (and birthdays) apply to old weigh-ins too.
+        // the formulas (and birthdays, see UserProfile.agedTo) apply to old weigh-ins too.
         val reports = weighIns.map { LocalDate.parse(it.date) to BodyAnalysis.report(it.kg, it.impedance, profile) }
         val scans = reports.filter { it.second.composition != null }
 

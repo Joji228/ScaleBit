@@ -126,6 +126,9 @@ interface MealDao {
     @Query("SELECT * FROM meals")
     suspend fun allMeals(): List<MealEntity>
 
+    @Query("SELECT COUNT(*) FROM meals")
+    suspend fun count(): Int
+
     @Query("SELECT * FROM food_items")
     suspend fun allItems(): List<FoodItemEntity>
 

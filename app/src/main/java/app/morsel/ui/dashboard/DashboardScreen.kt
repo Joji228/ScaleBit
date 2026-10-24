@@ -220,11 +220,12 @@ fun DashboardScreen(
     val listState = rememberLazyListState()
     val swipe = remember { DaySwipe(scope, listState, viewModel::previousDay, viewModel::nextDay, pastToday = onScan) }
     val snackbar = remember { SnackbarHostState() }
+    LaunchedEffect(viewModel) { viewModel.problems.collect { snackbar.showSnackbar(it) } }
     val deleteWithUndo: (Long) -> Unit = { id ->
         scope.launch {
-            val removed = viewModel.removeMeal(id)
+            val removed = viewModel.removeMeal(id) ?: return@launch
             val result = snackbar.showSnackbar("Meal deleted", actionLabel = "Undo", duration = SnackbarDuration.Short)
-            if (result == SnackbarResult.ActionPerformed && removed != null) viewModel.restoreMeal(removed)
+            if (result == SnackbarResult.ActionPerformed) viewModel.restoreMeal(removed)
         }
     }
     swipe.canGoNext = state.date < state.today

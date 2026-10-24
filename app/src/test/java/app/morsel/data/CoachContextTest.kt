@@ -115,6 +115,22 @@ class CoachContextTest {
     }
 
     @Test
+    fun oldWeighInsAreThinnedToOneAWeek() {
+        // Daily weigh-ins for a year: the last 90 days all listed, before that one a week.
+        val weights = (0 until 365).map { d ->
+            val day = today.minusDays(d.toLong())
+            WeightEntity(date = day.toString(), timestamp = at(day, 7), kg = 80.0 + d / 100.0)
+        }
+        val text = CoachContext.build(now, plan(), emptyList(), emptyList(), emptyList(), weights, zone)
+        val lines = text.lines().filter { Regex("""^\d{4}-\d{2}-\d{2} 07:00,""").containsMatchIn(it) }
+        val recent = lines.count { !LocalDate.parse(it.take(10)).isBefore(today.minusDays(CoachContext.WEIGH_IN_DAYS - 1L)) }
+        assertTrue(recent == CoachContext.WEIGH_IN_DAYS)
+        assertTrue(lines.size - recent in 40..41)
+        // Still oldest first.
+        assertTrue(lines.map { it.take(10) } == lines.map { it.take(10) }.sorted())
+    }
+
+    @Test
     fun namesCantBreakTheLayout() {
         val text = CoachContext.build(now, plan(), listOf(meal(1, today, "Two\nlines | pipe")), listOf(item(1, "X", 100.0, 100.0)), emptyList(), emptyList(), zone)
         assertTrue(text.contains("| Two lines / pipe |"))

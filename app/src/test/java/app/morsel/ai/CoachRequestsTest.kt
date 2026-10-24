@@ -3,6 +3,7 @@ package app.morsel.ai
 import app.morsel.data.ActionStatus
 import app.morsel.data.ActionType
 import app.morsel.data.CoachAction
+import app.morsel.data.CoachContext
 import app.morsel.data.CoachMessage
 import app.morsel.data.Provider
 import app.morsel.data.ThinkingLevel
@@ -78,6 +79,18 @@ class CoachRequestsTest {
         val roles = body["messages"]!!.jsonArray.map { it.jsonObject.str("role") }
         assertEquals(listOf("user", "assistant", "user"), roles)
         assertEquals("And protein?", body["messages"]!!.jsonArray.last().jsonObject.str("content"))
+    }
+
+    @Test
+    fun claudeKeepsTheClockOutOfTheCachedBlock() {
+        val withClock = CoachPrompt.system("# Data\nmeals...") + CoachContext.NOW_MARKER + "Friday 2026-10-23 12:34.\n"
+        val blocks = CoachRequests.anthropic("claude-haiku", withClock, chat)["system"]!!.jsonArray.map { it.jsonObject }
+        assertEquals(2, blocks.size)
+        assertTrue(blocks[0].str("text")!!.endsWith("meals..."))
+        assertEquals("ephemeral", blocks[0]["cache_control"]!!.jsonObject.str("type"))
+        assertTrue(blocks[1].str("text")!!.startsWith(CoachContext.NOW_MARKER))
+        assertNull(blocks[1]["cache_control"])
+        assertEquals(withClock, blocks.joinToString("") { it.str("text")!! })
     }
 
     @Test

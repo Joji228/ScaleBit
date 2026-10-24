@@ -63,6 +63,11 @@ class AiResponsesTest {
         assertTrue(UrlPolicy.problem("http://api.example.com/v1")!!.contains("https"))
         assertTrue(UrlPolicy.problem("http://8.8.8.8/v1")!!.contains("https"))
         assertTrue(UrlPolicy.problem("http://172.32.0.1/v1")!!.contains("https"))
+        // IPv6: private and link-local addresses are local, public ones aren't.
+        assertNull(UrlPolicy.problem("http://[fd12:3456::10]:11434/v1"))
+        assertNull(UrlPolicy.problem("http://[fe80::1]:11434/v1"))
+        assertNull(UrlPolicy.problem("http://[::1]:8080/v1"))
+        assertTrue(UrlPolicy.problem("http://[2001:4860:4860::8888]/v1")!!.contains("https"))
         assertTrue(UrlPolicy.problem("ftp://example.com") != null)
         assertTrue(UrlPolicy.problem("not a url") != null)
     }

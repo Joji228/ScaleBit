@@ -52,8 +52,10 @@ class PhotoStore(private val context: Context) {
         out.absolutePath
     }
 
-    fun clearCaptures() {
-        captureDir.listFiles()?.forEach { it.delete() }
+    /** Deletes photos taken for scans, except the ones in [keep]. */
+    fun clearCaptures(keep: List<File> = emptyList()) {
+        val kept = keep.map { it.absolutePath }.toSet()
+        captureDir.listFiles()?.filter { it.absolutePath !in kept }?.forEach { it.delete() }
     }
 
     fun mealPhotos(): List<File> = mealDir.listFiles()?.toList().orEmpty()

@@ -4,6 +4,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import java.time.LocalDate
 
 class NutritionTest {
     private val man = UserProfile(
@@ -84,5 +85,24 @@ class NutritionTest {
     fun bmi() {
         assertEquals(27.8, Nutrition.bmi(90.0, 180.0), 0.05)
         assertEquals("Overweight", Nutrition.bmiCategory(27.8))
+    }
+
+    @Test
+    fun ageCountsUpOnEachAnniversaryOfBeingEntered() {
+        val p = man.copy(startDate = "2024-03-10")
+        assertEquals(30, p.agedTo(LocalDate.parse("2025-03-09")).age)
+        val aged = p.agedTo(LocalDate.parse("2026-10-24"))
+        assertEquals(32, aged.age)
+        // Saved back and read again later the same year, it doesn't count the years twice.
+        assertEquals(32, aged.agedTo(LocalDate.parse("2026-12-31")).age)
+        assertEquals(33, aged.agedTo(LocalDate.parse("2027-03-10")).age)
+        // An age typed in later counts from that day, not from the start date.
+        assertEquals(40, p.copy(age = 40, ageSetOn = "2026-10-01").agedTo(LocalDate.parse("2027-09-30")).age)
+    }
+
+    @Test
+    fun calorieMinimumDependsOnSex() {
+        assertEquals(1500, Nutrition.minimumKcal(Sex.MALE))
+        assertEquals(1200, Nutrition.minimumKcal(Sex.FEMALE))
     }
 }

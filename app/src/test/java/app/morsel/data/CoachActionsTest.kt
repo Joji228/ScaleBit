@@ -44,7 +44,7 @@ class CoachActionsTest {
         assertEquals(121.0, a[1].kg!!, 0.0001)
         assertEquals("2026-10-19", a[1].date)
         assertEquals("yesterday", CoachActions.detail(a[1], today))
-        assertEquals(800, a[2].kcal) // clamped up to the safe minimum
+        assertEquals(1200, a[2].kcal) // clamped up to the safe minimum
         assertNull(a[3].kcal) // back to automatic
         assertEquals("Set the water goal to 3.0 L", CoachActions.title(a[4]))
     }

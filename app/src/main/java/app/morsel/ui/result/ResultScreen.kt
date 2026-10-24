@@ -1,5 +1,6 @@
 package app.morsel.ui.result
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.ui.res.stringResource
 import app.morsel.R
 import androidx.compose.foundation.background
@@ -93,6 +94,18 @@ fun ResultScreen(viewModel: ResultViewModel, onClose: () -> Unit, onSaved: () ->
     var editingGrams by remember { mutableStateOf<EditableItem?>(null) }
     var adding by remember { mutableStateOf(false) }
     var confirmDelete by remember { mutableStateOf(false) }
+    var confirmDiscard by remember { mutableStateOf(false) }
+    // A new scan isn't saved anywhere yet (and may have cost an AI request): ask before throwing it away.
+    val unsavedScan = !state.isEdit && state.items.isNotEmpty()
+    val close: () -> Unit = {
+        if (unsavedScan) {
+            confirmDiscard = true
+        } else {
+            viewModel.discardDraft()
+            onClose()
+        }
+    }
+    BackHandler(enabled = unsavedScan && !state.saving) { confirmDiscard = true }
     var viewing by remember { mutableStateOf<Any?>(null) }
 
     Column(
@@ -107,10 +120,7 @@ fun ResultScreen(viewModel: ResultViewModel, onClose: () -> Unit, onSaved: () ->
                 .padding(horizontal = 12.dp, vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            RoundIconButton(Icons.Rounded.Close, "Close", {
-                viewModel.discardDraft()
-                onClose()
-            })
+            RoundIconButton(Icons.Rounded.Close, "Close", close)
             Spacer(Modifier.weight(1f))
             if (state.isEdit) {
                 RoundIconButton(Icons.Rounded.DeleteOutline, "Delete meal", { confirmDelete = true })
@@ -282,6 +292,30 @@ fun ResultScreen(viewModel: ResultViewModel, onClose: () -> Unit, onSaved: () ->
         )
     }
     viewing?.let { photo -> PhotoViewer(photo, onDismiss = { viewing = null }) }
+    if (confirmDiscard) {
+        AlertDialog(
+            onDismissRequest = { confirmDiscard = false },
+            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+            title = { Text("Discard this meal?") },
+            text = { Text("It hasn't been logged yet. Discarding it throws away the scan and its photos.") },
+            confirmButton = {
+                TextButton(onClick = {
+                    confirmDiscard = false
+                    viewModel.discardDraft()
+                    onClose()
+                }) { Text("Discard", color = MaterialTheme.colorScheme.error) }
+            },
+            dismissButton = { TextButton(onClick = { confirmDiscard = false }) { Text("Keep editing") } },
+        )
+    }
+    state.error?.let { error ->
+        AlertDialog(
+            onDismissRequest = { viewModel.dismissError() },
+            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+            text = { Text(error) },
+            confirmButton = { TextButton(onClick = { viewModel.dismissError() }) { Text(stringResource(R.string.ok)) } },
+        )
+    }
     if (confirmDelete) {
         AlertDialog(
             onDismissRequest = { confirmDelete = false },

@@ -3,6 +3,7 @@ package app.morsel.domain
 import kotlinx.serialization.Serializable
 import java.time.LocalDate
 import java.time.LocalTime
+import java.time.temporal.ChronoUnit
 import kotlin.math.abs
 import kotlin.math.max
 import kotlin.math.min
@@ -36,7 +37,21 @@ data class UserProfile(
     val customWaterMl: Int? = null,
     /** Adjust the calorie target from logged meals and weight trend (see [AdaptiveTdee]). */
     val smartTarget: Boolean = false,
-)
+    /** When [age] was entered; null for profiles saved before this existed, which use [startDate]. */
+    val ageSetOn: String? = null,
+) {
+    /**
+     * The profile with [age] counted up by the whole years since it was entered, so BMR, targets
+     * and body composition keep up with birthdays. [ageSetOn] moves forward by the same years,
+     * so saving the result back changes nothing.
+     */
+    fun agedTo(today: LocalDate): UserProfile {
+        val since = runCatching { LocalDate.parse(ageSetOn ?: startDate) }.getOrNull() ?: return this
+        val years = ChronoUnit.YEARS.between(since, today)
+        if (years <= 0) return this
+        return copy(age = age + years.toInt(), ageSetOn = since.plusYears(years).toString())
+    }
+}
 
 enum class MealType(val title: String) {
     BREAKFAST("Breakfast"),
@@ -91,6 +106,11 @@ data class Targets(
 object Nutrition {
     private const val KCAL_PER_KG = 7700.0
 
+    /** The lowest daily calorie target the app plans or lets the coach set: 1,500 for men, 1,200 for women. */
+    const val MIN_KCAL_ANY = 1200
+
+    fun minimumKcal(sex: Sex): Int = if (sex == Sex.MALE) 1500 else MIN_KCAL_ANY
+
     /** Mifflin-St Jeor resting energy expenditure. */
     fun bmr(profile: UserProfile, weightKg: Double): Double {
         val base = 10 * weightKg + 6.25 * profile.heightCm - 5 * profile.age
@@ -142,7 +162,7 @@ object Nutrition {
         // Cap loss at ~1% of body weight per week and gain at 0.5 kg per week.
         val maxRate = if (direction < 0) weightKg * 0.01 else 0.5
         val rate = min(profile.weeklyRateKg, maxRate)
-        val floor = if (profile.sex == Sex.MALE) 1500.0 else 1200.0
+        val floor = minimumKcal(profile.sex).toDouble()
         val planned = tdee + direction * rate * KCAL_PER_KG / 7
         return (max(planned, min(floor, tdee)) / 10).roundToInt() * 10
     }

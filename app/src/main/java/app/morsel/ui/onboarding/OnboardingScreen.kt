@@ -1,5 +1,7 @@
 package app.morsel.ui.onboarding
 
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.AlertDialog
 import androidx.compose.ui.res.stringResource
 import app.morsel.R
 import androidx.activity.compose.BackHandler
@@ -74,6 +76,13 @@ import kotlin.math.roundToLong
 fun OnboardingScreen(viewModel: OnboardingViewModel, engines: SettingsViewModel, onDone: () -> Unit, onExit: () -> Unit) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     BackHandler { if (!viewModel.back()) onExit() }
+    state.error?.let { error ->
+        AlertDialog(
+            onDismissRequest = { viewModel.dismissError() },
+            text = { Text(error) },
+            confirmButton = { TextButton(onClick = { viewModel.dismissError() }) { Text(stringResource(R.string.ok)) } },
+        )
+    }
 
     val steps = state.steps
     val index = steps.indexOf(state.step).coerceAtLeast(0)
@@ -187,7 +196,7 @@ private fun Basics(state: OnboardingState, vm: OnboardingViewModel) {
         { sex -> vm.update { it.copy(sex = sex) } },
     )
     Spacer(Modifier.height(12.dp))
-    NumberStepper("Age", state.profile.age.toDouble(), { v -> vm.update { it.copy(age = v.toInt()) } }, 14.0..90.0, 1.0, "years")
+    NumberStepper("Age", state.profile.age.toDouble(), { v -> vm.update { it.copy(age = v.toInt(), ageSetOn = LocalDate.now().toString()) } }, 14.0..90.0, 1.0, "years")
     Spacer(Modifier.height(12.dp))
     NumberStepper("Height", state.profile.heightCm, { v -> vm.update { it.copy(heightCm = v) } }, 130.0..220.0, 1.0, "cm")
 }

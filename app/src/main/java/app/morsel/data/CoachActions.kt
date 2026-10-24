@@ -1,6 +1,7 @@
 package app.morsel.data
 
 import app.morsel.domain.Macros
+import app.morsel.domain.Nutrition
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
@@ -148,7 +149,8 @@ object CoachActions {
             }
             ActionType.SET_CALORIES -> {
                 if (o.bool("automatic")) return CoachAction(type)
-                val kcal = o.num("kcal")?.roundToInt()?.coerceIn(800, 6_000) ?: return null
+                // The sex-specific minimum is applied when the card is prepared (CoachViewModel).
+                val kcal = o.num("kcal")?.roundToInt()?.coerceIn(Nutrition.MIN_KCAL_ANY, 6_000) ?: return null
                 CoachAction(type, kcal = kcal)
             }
             ActionType.SET_WATER_GOAL -> {

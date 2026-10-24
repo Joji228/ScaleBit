@@ -123,13 +123,24 @@ class ScanViewModel(private val app: AppContainer) : ViewModel() {
                 mealName = facts.joinToString(" + ") { it.label }.take(60),
                 items = items,
                 confidence = "high",
-                notes = "Read from the barcode on Open Food Facts. Amount is " +
-                    (if (facts.all { it.servingGrams != null }) "one serving" else "100 g or one serving") + "; adjust if you had more or less.",
+                notes = "Read from the barcode on Open Food Facts. Amount is ${amountNote(facts)}; adjust if you had more or less.",
             ),
             provider = ai.primary,
             model = "",
             sourceLabel = "Open Food Facts · barcode",
         )
+    }
+
+    /** Says which amount [resultFromFacts] logged for each product, in the same order it picks them. */
+    private fun amountNote(facts: List<FoodFact>): String {
+        val amounts = facts.map {
+            when {
+                it.packageGrams != null -> "the whole package"
+                it.servingGrams != null -> "one serving"
+                else -> "100 g"
+            }
+        }.distinct()
+        return amounts.singleOrNull() ?: "the whole package, one serving or 100 g, depending on the product"
     }
 
     /**

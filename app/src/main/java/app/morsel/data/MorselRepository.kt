@@ -15,7 +15,7 @@ import java.time.LocalDate
 /** Everything the app stores, minus API keys and photos. Used for Export / Import backup. */
 @Serializable
 data class Backup(
-    val version: Int = 2,
+    val version: Int = VERSION,
     val profile: UserProfile? = null,
     val meals: List<MealEntity> = emptyList(),
     val items: List<FoodItemEntity> = emptyList(),
@@ -26,6 +26,24 @@ data class Backup(
 ) {
     /** Nothing logged at all: a fresh install, or a phone that was just erased. */
     val isEmpty get() = meals.isEmpty() && water.isEmpty() && weights.isEmpty()
+
+    /**
+     * Why this file must not replace the data on the phone, or null when it can. Any JSON object
+     * reads as a Backup (unknown fields are ignored), so a file with no profile and nothing
+     * logged is some other file, and importing it would just erase everything.
+     */
+    fun problem(): String? {
+        if (version > VERSION) return "This backup was made by a newer ScaleBit. Update the app first, then import it."
+        if (isEmpty && profile == null) return "That file isn't a ScaleBit backup, or it has nothing in it. Nothing was changed."
+        val mealIds = meals.map { it.id }.toSet()
+        if (items.any { it.mealId !in mealIds }) return "That backup is damaged: some foods belong to no meal. Nothing was changed."
+        return null
+    }
+
+    companion object {
+        /** The newest backup format this version writes and reads. */
+        const val VERSION = 2
+    }
 }
 
 const val PHOTO_DAYS = 30
@@ -50,6 +68,8 @@ class MorselRepository(
 
     suspend fun meal(id: Long) = db.meals().get(id)
 
+    suspend fun mealCount() = db.meals().count()
+
     /** Food lines logged since [since], newest first, for the Add food box's recent foods. */
     suspend fun recentFoodItems(since: LocalDate): List<FoodItemEntity> = db.meals().itemsSince(since.toString())
 
@@ -65,10 +85,14 @@ class MorselRepository(
         id
     }
 
-    suspend fun deleteMeal(id: Long) {
+    /**
+     * [keepPhoto] leaves the photo file in place so an undo can bring the meal back with it; if
+     * nothing does, the photo is removed with the other unused ones on the next launch (see [prunePhotos]).
+     */
+    suspend fun deleteMeal(id: Long, keepPhoto: Boolean = false) {
         val photo = db.meals().get(id)?.meal?.photoPath
         db.meals().delete(id)
-        photo?.takeIf(::isMealPhoto)?.let { File(it).delete() }
+        if (!keepPhoto) photo?.takeIf(::isMealPhoto)?.let { File(it).delete() }
     }
 
     /**
