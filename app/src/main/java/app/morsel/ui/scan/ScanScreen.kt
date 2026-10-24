@@ -312,8 +312,9 @@ fun ScanScreen(viewModel: ScanViewModel, onResult: () -> Unit, onToday: () -> Un
                 )
                 Shutter(
                     enabled = hasPermission && viewModel.photos.size < ScanViewModel.MAX_PHOTOS,
+                    photos = viewModel.photos.size,
+                    limit = ScanViewModel.MAX_PHOTOS,
                     onClick = ::capture,
-
                 )
                 RoundIconButton(
                     Icons.Rounded.Edit,
@@ -528,29 +529,36 @@ private fun PhotoStrip(viewModel: ScanViewModel, modifier: Modifier) {
  * plus rather than looking like a camera's only button.
  */
 @Composable
-private fun Shutter(enabled: Boolean, onClick: () -> Unit) {
-    val ring = MaterialTheme.colorScheme.onSurface
-    Box(
-        Modifier
-            .size(72.dp)
-            .clip(CircleShape)
-            .border(3.5.dp, if (enabled) ring else ring.copy(alpha = 0.3f), CircleShape)
-            .clickable(enabled = enabled, onClick = onClick),
-        contentAlignment = Alignment.Center,
-    ) {
+private fun Shutter(enabled: Boolean, photos: Int, limit: Int, onClick: () -> Unit) {
+    val tint = MaterialTheme.colorScheme.primary
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
         Box(
             Modifier
-                .size(58.dp)
+                .size(60.dp)
                 .clip(CircleShape)
-                .background(if (enabled) ring else ring.copy(alpha = 0.3f)),
+                .background(if (enabled) tint else tint.copy(alpha = 0.35f))
+                .clickable(enabled = enabled, onClick = onClick),
             contentAlignment = Alignment.Center,
         ) {
-            Icon(Icons.Rounded.Add, "Add a photo", Modifier.size(30.dp), tint = ShutterPlus)
+            Icon(Icons.Rounded.Add, "Add a photo", Modifier.size(28.dp), tint = MaterialTheme.colorScheme.onPrimary)
         }
+        Spacer(Modifier.height(6.dp))
+        // Says what the button is for, so it's clear more than one photo can go into a meal.
+        Text(
+            when {
+                photos >= limit -> "Photo limit reached"
+                photos == 0 -> "Tap to take a photo"
+                else -> "Tap to add another"
+            },
+            style = MaterialTheme.typography.labelMedium,
+            color = Color.White,
+            modifier = Modifier
+                .clip(RoundedCornerShape(50))
+                .background(Color.Black.copy(alpha = 0.55f))
+                .padding(horizontal = 10.dp, vertical = 4.dp),
+        )
     }
 }
-
-private val ShutterPlus = Color(0xFF8E8E93)
 
 @Composable
 private fun NoPermission(onAllow: () -> Unit) {

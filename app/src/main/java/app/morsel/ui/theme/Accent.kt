@@ -8,8 +8,8 @@ import androidx.compose.ui.graphics.lerp
  * one for the light theme, so text and icons stay readable on either background.
  */
 enum class AccentColor(val title: String, val dark: Color, val light: Color) {
-    LIME("Lime", Color(0xFFC5F25A), Color(0xFF4C7A00)),
     BLUE("Blue", Color(0xFF6C8CFF), Color(0xFF2F54D6)),
+    LIME("Lime", Color(0xFFC5F25A), Color(0xFF4C7A00)),
     PURPLE("Purple", Color(0xFFA78BFA), Color(0xFF6D4AD8)),
     PINK("Pink", Color(0xFFF472B6), Color(0xFFBE185D)),
     RED("Red", Color(0xFFFF5A6E), Color(0xFFC81E3A)),
