@@ -7,21 +7,24 @@ import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.time.ZoneId
+import java.time.ZonedDateTime
 
 class TokenBudgetTest {
     private val zone = ZoneId.of("Europe/Athens")
     private val day = 24L * 60 * 60 * 1000
 
-    /** 2026-10-24 15:00 in Athens. */
-    private val now = java.time.ZonedDateTime.of(2026, 10, 24, 15, 0, 0, 0, zone).toInstant().toEpochMilli()
+    /** Saturday 2026-10-24 15:00 in Athens. */
+    private val now = at(2026, 10, 24, 15)
+
+    private fun at(year: Int, month: Int, dayOfMonth: Int, hour: Int): Long =
+        ZonedDateTime.of(year, month, dayOfMonth, hour, 0, 0, 0, zone).toInstant().toEpochMilli()
 
     private fun obj(text: String) = Json.parseToJsonElement(text).jsonObject
 
     @Test
     fun logRoundTripsAndOldEntriesAreDropped() {
         val old = now - 9 * day
-        val log = TokenBudget.add("", old, 500, now)
-        assertEquals("", log)
+        assertEquals("", TokenBudget.add("", old, 500, now))
         val recent = TokenBudget.add("", now - day, 1_000, now)
         val both = TokenBudget.add(recent, now, 2_000, now)
         assertEquals(listOf(now - day to 1_000L, now to 2_000L), TokenBudget.parse(both))
@@ -29,9 +32,17 @@ class TokenBudgetTest {
 
     @Test
     fun todayIsTheLocalCalendarDay() {
-        val start = TokenBudget.startOfToday(now, zone)
-        val midnight = java.time.ZonedDateTime.of(2026, 10, 24, 0, 0, 0, 0, zone).toInstant().toEpochMilli()
-        assertEquals(midnight, start)
+        assertEquals(at(2026, 10, 24, 0), TokenBudget.startOfToday(now, zone))
+    }
+
+    @Test
+    fun weekStartsOnSundayAtNine() {
+        // Saturday: the week began on the Sunday before, at 9:00.
+        assertEquals(at(2026, 10, 18, 9), TokenBudget.weekStart(now, zone))
+        // Sunday after 9:00: this Sunday's 9:00 starts a new week.
+        assertEquals(at(2026, 10, 25, 9), TokenBudget.weekStart(at(2026, 10, 25, 10), zone))
+        // Sunday before 9:00: still the previous week.
+        assertEquals(at(2026, 10, 18, 9), TokenBudget.weekStart(at(2026, 10, 25, 8), zone))
     }
 
     @Test
@@ -45,12 +56,21 @@ class TokenBudgetTest {
     }
 
     @Test
-    fun weeklyLimitCountsTheLastSevenDays() {
-        val entries = listOf((now - 3 * day) to 600_000L)
-        val message = TokenBudget.blocked(entries, daily = 0, weekly = 500_000, now = now, zone = zone)
+    fun weeklyLimitCountsFromSundayNineAndResetsThen() {
+        // Used on Monday of this week: counts.
+        val thisWeek = listOf(at(2026, 10, 19, 12) to 600_000L)
+        val message = TokenBudget.blocked(thisWeek, daily = 0, weekly = 500_000, now = now, zone = zone)
         assertTrue(message!!.startsWith("Weekly AI limit reached"))
-        val eightDaysAgo = listOf((now - 8 * day) to 600_000L)
-        assertNull(TokenBudget.blocked(eightDaysAgo, daily = 0, weekly = 500_000, now = now, zone = zone))
+        // Used on the Sunday before this week started (before 9:00): doesn't count any more.
+        val lastWeek = listOf(at(2026, 10, 18, 8) to 600_000L)
+        assertNull(TokenBudget.blocked(lastWeek, daily = 0, weekly = 500_000, now = now, zone = zone))
+    }
+
+    @Test
+    fun weeklyUseShowsInTheSummary() {
+        val entries = listOf(at(2026, 10, 19, 12) to 300L, at(2026, 10, 18, 8) to 900L)
+        val usage = TokenBudget.summary(entries, daily = 0, weekly = 0, now = now, zone = zone)
+        assertEquals(300L, usage.week)
     }
 
     @Test

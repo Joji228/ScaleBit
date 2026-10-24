@@ -60,6 +60,7 @@ import androidx.compose.material.icons.rounded.Refresh
 import androidx.compose.material.icons.rounded.Visibility
 import androidx.compose.material.icons.rounded.VisibilityOff
 import androidx.compose.material.icons.rounded.Wallet
+import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -591,69 +592,93 @@ private fun SettingRow(icon: ImageVector, title: String, value: String?, onClick
 }
 
 /**
- * The token limits as one compact row. Tapping it opens the day and week choices and today's use,
- * so the AI engine screen stays short.
+ * The token limits, on this screen: today's bar and this week's bar. Each has a small menu to change
+ * its cap. The week counts from Sunday 9:00 and resets each Sunday at 9:00.
  */
 @Composable
 private fun UsageCard(viewModel: SettingsViewModel) {
     val usage by viewModel.usage.collectAsStateWithLifecycle(initialValue = TokenUsage(0, 0, 0, 0))
-    var open by remember { mutableStateOf(false) }
     Surface(
-        onClick = { open = true },
         shape = RoundedCornerShape(22.dp),
         color = MaterialTheme.colorScheme.surfaceContainer,
         modifier = Modifier.fillMaxWidth(),
     ) {
-        Row(
+        Column(
             Modifier.padding(horizontal = 18.dp, vertical = 16.dp),
-            verticalAlignment = Alignment.CenterVertically,
+            verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
-            Column(Modifier.weight(1f)) {
-                Text("Token limit", style = MaterialTheme.typography.bodyLarge)
-                Text(
-                    "Day: ${TokenBudget.label(usage.daily)} · Week: ${TokenBudget.label(usage.weekly)}",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-            Icon(Icons.AutoMirrored.Rounded.KeyboardArrowRight, null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
-        }
-    }
-    if (open) {
-        Sheet(
-            title = "Token limit",
-            subtitle = "Caps how much the AI engines can use. Counted in tokens, as each engine reports them.",
-            onDismiss = { open = false },
-        ) {
-            UsageLine("Today", usage.today, usage.daily)
-            UsageLine("Last 7 days", usage.week, usage.weekly)
-            Spacer(Modifier.height(14.dp))
-            Text("Per day", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            Spacer(Modifier.height(6.dp))
-            PillSelector(TokenBudget.dailyChoices, usage.daily, { TokenBudget.label(it) }, { viewModel.setDailyLimit(it) })
-            Spacer(Modifier.height(14.dp))
-            Text("Per week", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            Spacer(Modifier.height(6.dp))
-            PillSelector(TokenBudget.weeklyChoices, usage.weekly, { TokenBudget.label(it) }, { viewModel.setWeeklyLimit(it) })
-            Spacer(Modifier.height(14.dp))
-            Text(
-                "A reply that starts under the limit can finish a little over it.",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            LimitBar(
+                label = "Today",
+                used = usage.today,
+                limit = usage.daily,
+                choices = TokenBudget.dailyChoices,
+                onPick = { viewModel.setDailyLimit(it) },
+                note = "Resets at midnight",
+            )
+            LimitBar(
+                label = "This week",
+                used = usage.week,
+                limit = usage.weekly,
+                choices = TokenBudget.weeklyChoices,
+                onPick = { viewModel.setWeeklyLimit(it) },
+                note = "Counts from Sunday 9:00, resets each Sunday at 9:00",
             )
         }
     }
 }
 
+/** One limit: its name, the choice of cap in a small menu, how much is used, and a thin bar. */
 @Composable
-private fun UsageLine(label: String, used: Long, limit: Long) {
+private fun LimitBar(
+    label: String,
+    used: Long,
+    limit: Long,
+    choices: List<Long>,
+    onPick: (Long) -> Unit,
+    note: String,
+) {
+    var menu by remember { mutableStateOf(false) }
     Column {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(label, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
+            Box {
+                Surface(
+                    onClick = { menu = true },
+                    shape = RoundedCornerShape(50),
+                    color = MaterialTheme.colorScheme.surfaceContainerHighest,
+                ) {
+                    Text(
+                        "Limit ${TokenBudget.label(limit)} ▾",
+                        style = MaterialTheme.typography.labelLarge,
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                    )
+                }
+                DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
+                    choices.forEach { choice ->
+                        DropdownMenuItem(
+                            text = { Text(TokenBudget.label(choice)) },
+                            onClick = {
+                                onPick(choice)
+                                menu = false
+                            },
+                        )
+                    }
+                }
+            }
+        }
         Text(
-            if (limit > 0) "$label: ${TokenBudget.grouped(used)} of ${TokenBudget.grouped(limit)} tokens"
-            else "$label: ${TokenBudget.grouped(used)} tokens",
+            if (limit > 0) "${TokenBudget.grouped(used)} of ${TokenBudget.grouped(limit)} tokens"
+            else "${TokenBudget.grouped(used)} tokens, no limit",
             style = MaterialTheme.typography.bodyMedium,
+            modifier = Modifier.padding(top = 6.dp),
         )
         if (limit > 0) UsageBar((used.toFloat() / limit).coerceIn(0f, 1f))
+        Text(
+            note,
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(top = 6.dp),
+        )
     }
 }
 

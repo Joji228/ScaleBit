@@ -4,6 +4,7 @@ import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.longOrNull
+import java.time.DayOfWeek
 import java.time.Instant
 import java.time.ZoneId
 import java.util.Locale
@@ -22,6 +23,9 @@ object TokenBudget {
     val weeklyChoices = listOf(0L, 100_000L, 500_000L, 1_000_000L)
 
     private const val DAY_MS = 24L * 60 * 60 * 1000
+
+    /** The weekly limit's week starts and resets at 9:00 on Sunday. */
+    private const val WEEK_HOUR = 9
 
     /** Entries older than this are dropped from the log; a little more than a week. */
     private const val KEEP_MS = 8 * DAY_MS
@@ -46,10 +50,23 @@ object TokenBudget {
     fun startOfToday(now: Long, zone: ZoneId): Long =
         Instant.ofEpochMilli(now).atZone(zone).toLocalDate().atStartOfDay(zone).toInstant().toEpochMilli()
 
+    /**
+     * The start of the current week: the last Sunday at 9:00 local time, or the Sunday before that
+     * when it is not yet 9:00 on a Sunday. The weekly limit resets at each Sunday 9:00.
+     */
+    fun weekStart(now: Long, zone: ZoneId): Long {
+        val local = Instant.ofEpochMilli(now).atZone(zone)
+        var day = local.toLocalDate()
+        while (day.dayOfWeek != DayOfWeek.SUNDAY) day = day.minusDays(1)
+        var start = day.atTime(WEEK_HOUR, 0).atZone(zone)
+        if (start.isAfter(local)) start = start.minusWeeks(1)
+        return start.toInstant().toEpochMilli()
+    }
+
     fun summary(entries: List<Pair<Long, Long>>, daily: Long, weekly: Long, now: Long, zone: ZoneId): TokenUsage =
         TokenUsage(
             today = usedSince(entries, startOfToday(now, zone)),
-            week = usedSince(entries, now - 7 * DAY_MS),
+            week = usedSince(entries, weekStart(now, zone)),
             daily = daily,
             weekly = weekly,
         )
@@ -62,8 +79,8 @@ object TokenBudget {
                 "It resets at midnight, or raise the limit in Settings → AI engine."
         }
         if (weekly > 0 && usage.week >= weekly) {
-            return "Weekly AI limit reached: ${grouped(usage.week)} of ${grouped(weekly)} tokens in the last 7 days. " +
-                "Raise the limit in Settings → AI engine."
+            return "Weekly AI limit reached: ${grouped(usage.week)} of ${grouped(weekly)} tokens since Sunday 9:00. " +
+                "It resets next Sunday at 9:00, or raise the limit in Settings → AI engine."
         }
         return null
     }
