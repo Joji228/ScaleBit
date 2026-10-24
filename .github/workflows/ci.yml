@@ -15,7 +15,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - uses: actions/setup-java@v5
         with:
@@ -30,7 +30,7 @@ jobs:
           [ -x "$sdkmanager" ] || sdkmanager="$(ls -d "$ANDROID_HOME"/cmdline-tools/*/bin/sdkmanager | sort -V | tail -1)"
           yes | "$sdkmanager" --licenses > /dev/null || true
 
-      - uses: gradle/actions/setup-gradle@v4
+      - uses: gradle/actions/setup-gradle@v6
 
       - name: Unit tests
         run: ./gradlew --no-daemon testDebugUnitTest
@@ -43,9 +43,13 @@ jobs:
         run: ./gradlew --no-daemon lintDebug
         continue-on-error: true
 
+      - name: Lint findings
+        if: always()
+        run: find app/build -name 'lint-results-debug.txt' -exec cat {} \; || true
+
       - name: Test and lint reports
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: reports
           path: |

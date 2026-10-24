@@ -1,5 +1,6 @@
 package app.morsel.ui.settings
 
+import app.morsel.domain.Nutrition
 import androidx.compose.ui.res.stringResource
 import app.morsel.R
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -501,7 +502,22 @@ fun SettingsScreen(
             onDismissRequest = { targetDialog = false },
             containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
             title = { Text(stringResource(R.string.daily_calories)) },
-            text = { NumberStepper("Target", kcal, { kcal = it }, 800.0..6000.0, 50.0, "kcal") },
+            text = {
+                Column {
+                    NumberStepper("Target", kcal, { kcal = it }, 800.0..6000.0, 50.0, "kcal")
+                    // Still allowed (a doctor may prescribe it), but never without saying so.
+                    val minimum = Nutrition.minimumKcal(profile?.sex ?: Sex.MALE)
+                    if (kcal < minimum) {
+                        Spacer(Modifier.height(12.dp))
+                        Text(
+                            "That's below ${minimum.format()} kcal, the usual safe minimum for " +
+                                "${if (profile?.sex == Sex.FEMALE) "women" else "men"}. Only eat this little with a doctor's guidance.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.error,
+                        )
+                    }
+                }
+            },
             confirmButton = {
                 TextButton(onClick = {
                     viewModel.updateProfile { it.copy(customKcal = kcal.toInt()) }

@@ -8,6 +8,12 @@ import app.morsel.data.ActionType
 import app.morsel.data.CoachAction
 import app.morsel.data.CoachActions
 import app.morsel.data.CoachContext
+import app.morsel.data.CoachFollowUps
+import app.morsel.data.CoachStarters
+import app.morsel.domain.Macros
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.flatMapLatest
 import app.morsel.data.CoachMessage
 import app.morsel.data.CoachLookup
 import app.morsel.data.FoodFact
@@ -37,6 +43,7 @@ import java.time.LocalTime
 import java.util.Locale
 import kotlin.math.roundToInt
 
+@OptIn(ExperimentalCoroutinesApi::class)
 class CoachViewModel(private val app: AppContainer) : ViewModel() {
     val messages = MutableStateFlow<List<CoachMessage>>(emptyList())
 
@@ -55,9 +62,22 @@ class CoachViewModel(private val app: AppContainer) : ViewModel() {
     /** False until the saved conversation has been read, so the empty state doesn't flash first. */
     val loaded = MutableStateFlow(false)
 
+    /** The questions offered on an empty chat, picked from today's data (see CoachStarters). */
+    val starters = MutableStateFlow(CoachStarters.DEFAULTS)
+
     private var job: Job? = null
 
     init {
+        viewModelScope.launch {
+            combine(app.plans.plan, app.clock.today.flatMapLatest { app.repository.mealsFor(it) }) { plan, meals ->
+                CoachStarters.pick(
+                    now = LocalDateTime.now(),
+                    targets = plan.targets,
+                    eatenToday = meals.fold(Macros()) { acc, meal -> acc + meal.macros() },
+                    lastWeighIn = plan.weighIns.maxByOrNull { it.timestamp }?.date?.let(LocalDate::parse),
+                )
+            }.collect { starters.value = it }
+        }
         // Turned off (or everything erased) while this chat is alive: its file is gone, so forget it here too.
         viewModelScope.launch {
             app.settings.coachEnabled.collect { on -> if (!on) newChat() }
@@ -174,12 +194,13 @@ class CoachViewModel(private val app: AppContainer) : ViewModel() {
                     round++
                     reply = app.ai.chat(context, history, lookups)
                 }
-                val parsed = CoachActions.parse(CoachLookup.strip(reply.text), LocalDate.now())
+                val followUps = CoachFollowUps.parse(CoachLookup.strip(reply.text))
+                val parsed = CoachActions.parse(followUps.text, LocalDate.now())
                 val actions = parsed.actions.mapNotNull { prepare(it) }.map { CoachActions.withLabelValues(it, found) }
                 val text = parsed.text.ifBlank {
                     if (actions.isNotEmpty()) "Here's what I've prepared:" else "I couldn't prepare that. Could you say it another way?"
                 }
-                val answer = CoachMessage(fromUser = false, text = text, actions = actions)
+                val answer = CoachMessage(fromUser = false, text = text, actions = actions, suggestions = followUps.suggestions)
                 typing.value = answer.at
                 messages.value = messages.value + answer
                 app.coach.save(messages.value)

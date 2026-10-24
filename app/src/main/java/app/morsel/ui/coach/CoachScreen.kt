@@ -79,6 +79,7 @@ import java.time.format.DateTimeFormatter
 import java.util.Locale
 import kotlin.math.roundToInt
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -102,6 +103,7 @@ import app.morsel.data.ActionStatus
 import app.morsel.data.ActionType
 import app.morsel.data.CoachAction
 import app.morsel.data.CoachActions
+import app.morsel.data.CoachStarters
 import java.time.LocalDate
 import app.morsel.ui.components.Pill
 import app.morsel.ui.components.rememberHaptics
@@ -109,12 +111,8 @@ import app.morsel.ui.components.RoundIconButton
 
 internal const val TYPE_CHARS_PER_SECOND = 140L
 
-/** Questions offered on an empty chat; tapping one asks it. */
-val CoachSuggestions = listOf(
-    "How am I doing this week?",
-    "Am I eating enough protein?",
-    "Explain my last weigh-in",
-)
+/** Questions offered on an empty chat when nothing better fits today; tapping one asks it. */
+val CoachSuggestions = CoachStarters.DEFAULTS
 
 @Composable
 fun CoachScreen(viewModel: CoachViewModel, onBack: () -> Unit) {
@@ -124,6 +122,7 @@ fun CoachScreen(viewModel: CoachViewModel, onBack: () -> Unit) {
     val loaded by viewModel.loaded.collectAsStateWithLifecycle()
     val typing by viewModel.typing.collectAsStateWithLifecycle()
     val activity by viewModel.activity.collectAsStateWithLifecycle()
+    val starters by viewModel.starters.collectAsStateWithLifecycle()
     CoachContent(
         messages = messages,
         thinking = thinking,
@@ -139,6 +138,7 @@ fun CoachScreen(viewModel: CoachViewModel, onBack: () -> Unit) {
         onAccept = viewModel::accept,
         onDecline = viewModel::decline,
         onGrams = viewModel::setGrams,
+        starters = starters,
     )
 }
 
@@ -163,6 +163,8 @@ fun CoachContent(
     onDecline: (Long, Int) -> Unit = { _, _ -> },
     /** A new amount picked for one food on a card: message time, card position, food position, grams. */
     onGrams: (Long, Int, Int, Double) -> Unit = { _, _, _, _ -> },
+    /** The questions offered while the chat is empty. */
+    starters: List<String> = CoachSuggestions,
 ) {
     var input by rememberSaveable { mutableStateOf("") }
     var confirmNew by remember { mutableStateOf(false) }
@@ -205,7 +207,7 @@ fun CoachContent(
                 .fillMaxWidth(),
         ) {
             if (loaded && messages.isEmpty() && !thinking && error == null) {
-                EmptyCoach(onPick = onSend)
+                EmptyCoach(starters, onPick = onSend)
             } else {
                 LazyColumn(
                     state = listState,
@@ -258,6 +260,20 @@ fun CoachContent(
                     )
                 }
             }
+        }
+
+        // Follow-up questions from the newest answer: small pills in a sideways-scrolling row, kept
+        // quiet next to the proposal cards. They step aside while the user types or a card waits.
+        val followUps = last?.suggestions.orEmpty()
+        AnimatedVisibility(
+            visible = followUps.isNotEmpty() && pending.isEmpty() && !thinking && error == null && input.isBlank(),
+            enter = fadeIn(tween(220)) + expandVertically(expandFrom = Alignment.Bottom),
+            exit = fadeOut(tween(120)) + shrinkVertically(shrinkTowards = Alignment.Bottom),
+        ) {
+            FollowUpPills(followUps, onPick = { question ->
+                haptics.tick()
+                onSend(question)
+            })
         }
 
         InputBar(
