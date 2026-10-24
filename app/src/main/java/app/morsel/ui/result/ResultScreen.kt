@@ -1,5 +1,7 @@
 package app.morsel.ui.result
 
+import androidx.compose.ui.res.stringResource
+import app.morsel.R
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -151,7 +153,7 @@ fun ResultScreen(viewModel: ResultViewModel, onClose: () -> Unit, onSaved: () ->
                         modifier = Modifier.fillMaxWidth(),
                         decorationBox = { inner ->
                             if (state.name.isEmpty()) {
-                                Text("Name this meal", style = MaterialTheme.typography.headlineMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                Text(stringResource(R.string.name_this_meal), style = MaterialTheme.typography.headlineMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                             }
                             inner()
                         },
@@ -233,7 +235,7 @@ fun ResultScreen(viewModel: ResultViewModel, onClose: () -> Unit, onSaved: () ->
                 TextButton(onClick = { adding = true }) {
                     Icon(Icons.Rounded.Add, null, Modifier.size(18.dp))
                     Spacer(Modifier.width(6.dp))
-                    Text("Add item")
+                    Text(stringResource(R.string.add_item))
                 }
             }
             if (state.items.isNotEmpty() && state.notes != null) {
@@ -284,15 +286,15 @@ fun ResultScreen(viewModel: ResultViewModel, onClose: () -> Unit, onSaved: () ->
         AlertDialog(
             onDismissRequest = { confirmDelete = false },
             containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-            title = { Text("Delete this meal?") },
-            text = { Text("It will be removed from your log.") },
+            title = { Text(stringResource(R.string.delete_this_meal)) },
+            text = { Text(stringResource(R.string.it_will_be_removed_from_your)) },
             confirmButton = {
                 TextButton(onClick = {
                     confirmDelete = false
                     viewModel.delete(onSaved)
-                }) { Text("Delete", color = MaterialTheme.colorScheme.error) }
+                }) { Text(stringResource(R.string.delete), color = MaterialTheme.colorScheme.error) }
             },
-            dismissButton = { TextButton(onClick = { confirmDelete = false }) { Text("Cancel") } },
+            dismissButton = { TextButton(onClick = { confirmDelete = false }) { Text(stringResource(R.string.cancel)) } },
         )
     }
 }
@@ -334,7 +336,7 @@ private fun TotalsCard(state: ResultState) {
         Row(verticalAlignment = Alignment.Bottom) {
             Text(total.kcal.format(), style = MaterialTheme.typography.displaySmall.merge(Numeric))
             Text(
-                " kcal",
+                stringResource(R.string.kcal),
                 style = MaterialTheme.typography.titleMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(bottom = 5.dp),
@@ -343,7 +345,7 @@ private fun TotalsCard(state: ResultState) {
             // The whole plate's weight, so a portion can be judged without scrolling the items.
             Column(horizontalAlignment = Alignment.End) {
                 Text("≈ ${state.totalGrams.format()} g", style = MaterialTheme.typography.titleLarge.merge(Numeric))
-                Text("total weight", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(stringResource(R.string.total_weight), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         }
         Spacer(Modifier.height(12.dp))
@@ -439,21 +441,21 @@ private fun GramsDialog(initial: Double, onDismiss: () -> Unit, onSave: (Double)
     AlertDialog(
         onDismissRequest = onDismiss,
         containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-        title = { Text("Weight in grams") },
+        title = { Text(stringResource(R.string.weight_in_grams)) },
         text = {
             OutlinedTextField(
                 value = text,
                 onValueChange = { text = it },
                 singleLine = true,
-                suffix = { Text("g") },
+                suffix = { Text(stringResource(R.string.g)) },
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                 shape = RoundedCornerShape(14.dp),
             )
         },
         confirmButton = {
-            TextButton(onClick = { text.toNumber()?.let(onSave) ?: onDismiss() }) { Text("Save") }
+            TextButton(onClick = { text.toNumber()?.let(onSave) ?: onDismiss() }) { Text(stringResource(R.string.save)) }
         },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) } },
     )
 }
 
@@ -501,14 +503,14 @@ private fun AddItemDialog(
     AlertDialog(
         onDismissRequest = onDismiss,
         containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-        title = { Text("Add item") },
+        title = { Text(stringResource(R.string.add_item)) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.verticalScroll(rememberScrollState())) {
                 if (search != null) {
                     OutlinedTextField(
                         query,
                         { query = it },
-                        label = { Text("Search Open Food Facts") },
+                        label = { Text(stringResource(R.string.search_open_food_facts)) },
                         leadingIcon = { Icon(Icons.Rounded.Search, null) },
                         trailingIcon = { if (searching) CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp) },
                         singleLine = true,
@@ -547,9 +549,9 @@ private fun AddItemDialog(
                     }
                     searchProblem?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
                 }
-                OutlinedTextField(name, { name = it; source = null }, label = { Text("Name") }, singleLine = true, shape = RoundedCornerShape(14.dp))
+                OutlinedTextField(name, { name = it; source = null }, label = { Text(stringResource(R.string.name)) }, singleLine = true, shape = RoundedCornerShape(14.dp))
                 NumberField("Grams eaten", grams) { grams = it }
-                Text("Per 100 g", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(stringResource(R.string.per_100_g), style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     NumberField("kcal", kcal, Modifier.weight(1f)) { kcal = it }
                     NumberField("Protein g", protein, Modifier.weight(1f)) { protein = it }
@@ -573,9 +575,9 @@ private fun AddItemDialog(
                         source,
                     )
                 },
-            ) { Text("Add") }
+            ) { Text(stringResource(R.string.add)) }
         },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) } },
     )
 }
 

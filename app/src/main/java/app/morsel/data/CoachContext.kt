@@ -47,7 +47,7 @@ object CoachContext {
         val itemsByMeal = items.groupBy { it.mealId }
         val logged = meals.map { meal -> LoggedMeal(meal, itemsByMeal[meal.id].orEmpty()) }
         val fixed = buildString {
-            header(now)
+            header()
             profile(plan)
             daily(logged, water, now.toLocalDate())
             weighIns(plan, weights, zone)
@@ -55,20 +55,22 @@ object CoachContext {
         // Meals are the part that grows fastest; take the widest window that still fits.
         for ((mealDays, foodDays) in WINDOWS) {
             val text = fixed + buildString { meals(logged, now.toLocalDate(), mealDays, foodDays, zone) }
-            if (text.length <= maxChars || mealDays == 0) return text
+            if (text.length <= maxChars || mealDays == 0) return text + nowLine(now)
         }
-        return fixed
+        return fixed + nowLine(now)
     }
+
+    /** The time goes last, after the data, so everything before it stays the same from one day to the next. */
+    private fun nowLine(now: LocalDateTime): String =
+        "\nNow: " + now.format(DateTimeFormatter.ofPattern("EEEE yyyy-MM-dd HH:mm", Locale.ENGLISH)) + ". Today's numbers are still in progress.\n"
 
     private class LoggedMeal(val meal: MealEntity, val items: List<FoodItemEntity>) {
         val date: LocalDate = LocalDate.parse(meal.date)
         val macros: Macros = items.fold(Macros()) { acc, item -> acc + item.macros() }
     }
 
-    private fun StringBuilder.header(now: LocalDateTime) {
+    private fun StringBuilder.header() {
         append("# The user's ScaleBit data\n")
-        append("Now: ").append(now.format(DateTimeFormatter.ofPattern("EEEE yyyy-MM-dd HH:mm", Locale.ENGLISH)))
-        append(". Today's numbers are still in progress.\n")
         append("Units: kcal; protein (P), carbs (C) and fat (F) in grams; water in ml; weight in kg.\n")
     }
 

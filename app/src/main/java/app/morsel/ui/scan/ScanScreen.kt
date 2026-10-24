@@ -1,5 +1,7 @@
 package app.morsel.ui.scan
 
+import androidx.compose.ui.res.stringResource
+import app.morsel.R
 import android.Manifest
 import android.content.pm.PackageManager
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -223,7 +225,7 @@ fun ScanScreen(viewModel: ScanViewModel, onResult: () -> Unit, onToday: () -> Un
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Column(Modifier.weight(1f)) {
-                    Text("Scan", style = MaterialTheme.typography.headlineMedium)
+                    Text(stringResource(R.string.scan), style = MaterialTheme.typography.headlineMedium)
                     // With Open Food Facts on, the viewfinder also reads barcodes; said here, quietly.
                     val barcodesOn by viewModel.foodFactsEnabled.collectAsStateWithLifecycle(initialValue = false)
                     Text(
@@ -376,14 +378,14 @@ fun ScanScreen(viewModel: ScanViewModel, onResult: () -> Unit, onToday: () -> Un
         AlertDialog(
             onDismissRequest = { viewModel.error = null },
             containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-            title = { Text("Couldn't analyze") },
+            title = { Text(stringResource(R.string.couldn_t_analyze)) },
             text = { Text(message) },
-            confirmButton = { TextButton(onClick = { viewModel.error = null }) { Text("OK") } },
+            confirmButton = { TextButton(onClick = { viewModel.error = null }) { Text(stringResource(R.string.ok)) } },
             dismissButton = {
                 TextButton(onClick = {
                     viewModel.error = null
                     viewModel.manual(onResult)
-                }) { Text("Enter manually") }
+                }) { Text(stringResource(R.string.enter_manually)) }
             },
         )
     }
@@ -562,13 +564,13 @@ private fun NoPermission(onAllow: () -> Unit) {
         Icon(Icons.Rounded.NoPhotography, null, Modifier.size(40.dp), tint = Color(0xFF8E8E93))
         Spacer(Modifier.height(12.dp))
         Text(
-            "ScaleBit needs the camera to scan your meals.",
+            stringResource(R.string.scalebit_needs_the_camera_to_scan),
             style = MaterialTheme.typography.bodyMedium,
             color = Color(0xFFF5F5F7),
             textAlign = TextAlign.Center,
         )
         Spacer(Modifier.height(12.dp))
-        TextButton(onClick = onAllow) { Text("Allow camera") }
+        TextButton(onClick = onAllow) { Text(stringResource(R.string.allow_camera)) }
     }
 }
 
@@ -584,15 +586,15 @@ private fun AnalyzingOverlay(onCancel: () -> Unit) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             CircularProgressIndicator(color = MaterialTheme.colorScheme.primary, strokeWidth = 3.dp, modifier = Modifier.size(44.dp))
             Spacer(Modifier.height(20.dp))
-            Text("Estimating your meal…", style = MaterialTheme.typography.titleMedium, color = Color.White)
+            Text(stringResource(R.string.estimating_your_meal), style = MaterialTheme.typography.titleMedium, color = Color.White)
             Spacer(Modifier.height(4.dp))
             Text(
-                "This usually takes a few seconds",
+                stringResource(R.string.this_usually_takes_a_few_seconds),
                 style = MaterialTheme.typography.bodySmall,
                 color = Color(0xFF8E8E93),
             )
             Spacer(Modifier.height(20.dp))
-            TextButton(onClick = onCancel) { Text("Cancel") }
+            TextButton(onClick = onCancel) { Text(stringResource(R.string.cancel)) }
         }
     }
 }
@@ -603,11 +605,11 @@ private fun NoteDialog(initial: String, onDismiss: () -> Unit, onSave: (String) 
     AlertDialog(
         onDismissRequest = onDismiss,
         containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-        title = { Text("Describe the meal") },
+        title = { Text(stringResource(R.string.describe_the_meal)) },
         text = {
             Column {
                 Text(
-                    "Add details the photo can't show, or describe the meal without a photo.",
+                    stringResource(R.string.add_details_the_photo_can_t),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -615,16 +617,16 @@ private fun NoteDialog(initial: String, onDismiss: () -> Unit, onSave: (String) 
                 OutlinedTextField(
                     value = text,
                     onValueChange = { text = it },
-                    placeholder = { Text("200 g chicken, rice, cooked in 1 tbsp olive oil") },
+                    placeholder = { Text(stringResource(R.string.s_200_g_chicken_rice_cooked_in)) },
                     minLines = 3,
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(14.dp),
                 )
                 Spacer(Modifier.height(4.dp))
-                TextButton(onClick = onManual) { Text("Skip AI and log manually") }
+                TextButton(onClick = onManual) { Text(stringResource(R.string.skip_ai_and_log_manually)) }
             }
         },
-        confirmButton = { TextButton(onClick = { onSave(text) }) { Text("Done") } },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
+        confirmButton = { TextButton(onClick = { onSave(text) }) { Text(stringResource(R.string.done)) } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) } },
     )
 }

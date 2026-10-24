@@ -1,5 +1,7 @@
 package app.morsel.ui.body
 
+import androidx.compose.ui.res.stringResource
+import app.morsel.R
 import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
@@ -160,7 +162,7 @@ fun BodyScreen(viewModel: BodyViewModel, onBack: () -> Unit) {
         ) {
             RoundIconButton(Icons.AutoMirrored.Rounded.ArrowBack, "Back", onBack)
             Spacer(Modifier.width(14.dp))
-            Text("Body", style = MaterialTheme.typography.headlineSmall, modifier = Modifier.weight(1f))
+            Text(stringResource(R.string.body), style = MaterialTheme.typography.headlineSmall, modifier = Modifier.weight(1f))
             if (state.latest != null) {
                 RoundIconButton(
                     Icons.Rounded.Screenshot,
@@ -236,7 +238,7 @@ fun BodyScreen(viewModel: BodyViewModel, onBack: () -> Unit) {
                     } else {
                         CompositionCard(entry.report, scans.getOrNull(index - 1)?.report, state.series)
                         Text(
-                            "Estimated from your weight, the scale's impedance and your profile. Good for trends, not a medical measurement.",
+                            stringResource(R.string.estimated_from_your_weight_the_scale),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.padding(horizontal = 4.dp),
@@ -333,14 +335,14 @@ private fun WeightBmiCard(report: BodyReport) {
     MorselCard(padding = 16.dp) {
         Row(verticalAlignment = Alignment.Bottom) {
             Column(Modifier.weight(1f)) {
-                Text("Weight", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(stringResource(R.string.weight), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 Row(verticalAlignment = Alignment.Bottom) {
                     Text(report.weightKg.format(1), style = MaterialTheme.typography.headlineMedium.merge(Numeric))
-                    Text(" kg", style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(bottom = 4.dp))
+                    Text(stringResource(R.string.kg), style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(bottom = 4.dp))
                 }
             }
             Column(horizontalAlignment = Alignment.End) {
-                Text("BMI", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(stringResource(R.string.bmi), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     reading.segment?.let {
                         Pill(it.label, it.tone.color())
@@ -415,7 +417,7 @@ private fun ChartCard(state: BodyState, latest: BodyReport) {
     val points = if (from == null) all else all.filter { !it.date.isBefore(from) }
 
     MorselCard {
-        Text("Trends", style = MaterialTheme.typography.titleMedium)
+        Text(stringResource(R.string.trends), style = MaterialTheme.typography.titleMedium)
         Spacer(Modifier.height(10.dp))
         WeightProgress(state, latest)
         Spacer(Modifier.height(14.dp))
@@ -461,7 +463,7 @@ private fun ScoreCard(scan: BodyReport) {
             ScoreRing(score)
             Spacer(Modifier.width(14.dp))
             Column(Modifier.weight(1f)) {
-                Text("Body score", style = MaterialTheme.typography.titleSmall)
+                Text(stringResource(R.string.body_score), style = MaterialTheme.typography.titleSmall)
                 Text(type.summary, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 type.tip?.let { Text(it, style = MaterialTheme.typography.bodySmall) }
             }
@@ -499,7 +501,7 @@ private fun CompositionCard(scan: BodyReport, previous: BodyReport?, series: Map
     }
     var open by rememberSaveable { mutableStateOf<Metric?>(null) }
     MorselCard(padding = 0.dp) {
-        Text("Body composition", style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 4.dp))
+        Text(stringResource(R.string.body_composition), style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 4.dp))
         rows.forEachIndexed { index, (reading, details) ->
             if (index > 0) HorizontalDivider(Modifier.padding(horizontal = 18.dp), thickness = 0.5.dp, color = MaterialTheme.colorScheme.outlineVariant)
             val shown = SHOWN_AS[reading.metric]?.let { m -> scan.readings.firstOrNull { it.metric == m } } ?: reading

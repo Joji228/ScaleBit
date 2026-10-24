@@ -19,6 +19,7 @@ import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.async
 import app.morsel.ai.AnalysisResult
 import app.morsel.ai.enrichFromFoodFacts
+import app.morsel.ui.coach.CoachGate
 import app.morsel.data.BarcodeReader
 import app.morsel.data.FoodFact
 import app.morsel.ai.AiMeal
@@ -151,7 +152,7 @@ class ScanViewModel(private val app: AppContainer) : ViewModel() {
      */
     fun barcodeSeen(code: String, onReady: () -> Unit): Boolean {
         val now = System.currentTimeMillis()
-        if (analyzing || photos.isNotEmpty() || (unknownCodes[code]?.let { now - it < 20_000 } == true)) return false
+        if (CoachGate.open || analyzing || photos.isNotEmpty() || (unknownCodes[code]?.let { now - it < 20_000 } == true)) return false
         torch = false
         job = viewModelScope.launch {
             analyzing = true

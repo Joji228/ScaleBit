@@ -64,7 +64,8 @@ class OpenFoodFacts(version: String, client: OkHttpClient) {
             .build()
         val request = Request.Builder().url(url).header("User-Agent", userAgent).build()
         val body = http.newCall(request).await()
-        return FoodFactsParser.localFirst(FoodFactsParser.parse(body)).take(size)
+        val parsed = FoodFactsParser.parse(body)
+        return (if (AppRegion.greekTuning) FoodFactsParser.localFirst(parsed) else parsed).take(size)
     }
 
     /**

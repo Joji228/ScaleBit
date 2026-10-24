@@ -3,6 +3,7 @@ package app.morsel.ui.dashboard
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import app.morsel.AppContainer
+import app.morsel.ai.AiItem
 import app.morsel.ai.AnalysisResult
 import app.morsel.ai.enrichFromFoodFacts
 import app.morsel.data.PlanState
@@ -106,23 +107,23 @@ class DashboardViewModel(private val app: AppContainer) : ViewModel() {
         return if (app.settings.useFoodFacts.first()) result.enrichFromFoodFacts(app.foodFacts) else result
     }
 
-    /** Logs an estimate as one meal, with all of its items. */
-    fun logEstimate(result: AnalysisResult, type: MealType, date: LocalDate) {
+    /**
+     * Logs a meal from the Add food box as one meal with its items, as corrected on screen.
+     * [aiSource] is null when the foods came from recent foods only.
+     */
+    fun logDescribed(name: String, items: List<AiItem>, type: MealType, date: LocalDate, aiSource: String?, notes: String?) {
         viewModelScope.launch {
             app.repository.saveMeal(
                 MealEntity(
                     date = date.toString(),
                     timestamp = EntryTime.stamp(date, EntryTime.meal(type), today = app.clock.today.value),
                     mealType = type.name,
-                    name = result.meal.mealName.ifBlank { "Meal" }.take(60),
+                    name = name.ifBlank { "Meal" }.take(60),
                     photoPath = null,
-                    source = FoodSource.withFoodFacts(
-                        result.sourceLabel ?: "${result.provider.title} · ${result.model}",
-                        result.meal.items.any { it.foodFacts != null },
-                    ).orEmpty(),
-                    note = result.meal.notes.ifBlank { null },
+                    source = if (aiSource == null) "Recent foods" else FoodSource.withFoodFacts(aiSource, items.any { it.foodFacts != null }).orEmpty(),
+                    note = notes?.ifBlank { null },
                 ),
-                result.meal.items.filter { it.grams > 0 }.map {
+                items.filter { it.grams > 0 }.map {
                     FoodItemEntity(
                         mealId = 0,
                         name = it.name.ifBlank { "Food" },
@@ -133,6 +134,39 @@ class DashboardViewModel(private val app: AppContainer) : ViewModel() {
                         fatPer100 = it.fatPer100,
                     )
                 },
+            )
+        }
+    }
+
+    /** Foods logged in the last month, newest first, one per name: starting points for the Add food box. */
+    suspend fun recentFoods(): List<AiItem> =
+        app.repository.recentFoodItems(app.clock.today.value.minusDays(30))
+            .distinctBy { it.name.trim().lowercase() }
+            .take(12)
+            .map {
+                AiItem(
+                    name = it.name,
+                    grams = it.grams,
+                    kcalPer100 = it.kcalPer100,
+                    proteinPer100 = it.proteinPer100,
+                    carbsPer100 = it.carbsPer100,
+                    fatPer100 = it.fatPer100,
+                )
+            }
+
+    /** Deletes a meal and hands it back, so the undo in the snackbar can put it back. */
+    suspend fun removeMeal(id: Long): MealWithItems? {
+        val meal = app.repository.meal(id)
+        app.repository.deleteMeal(id)
+        return meal
+    }
+
+    /** Puts back a meal removed by [removeMeal]. Its photo, if it had one, is not restored. */
+    fun restoreMeal(meal: MealWithItems) {
+        viewModelScope.launch {
+            app.repository.saveMeal(
+                meal.meal.copy(id = 0, photoPath = null),
+                meal.items.map { it.copy(id = 0, mealId = 0) },
             )
         }
     }
@@ -179,11 +213,6 @@ class DashboardViewModel(private val app: AppContainer) : ViewModel() {
                 listOf(item),
             )
         }
-    }
-
-    /** Removes a meal and its photo. */
-    fun deleteMeal(id: Long) {
-        viewModelScope.launch { app.repository.deleteMeal(id) }
     }
 
     fun deleteWeight(id: Long) {

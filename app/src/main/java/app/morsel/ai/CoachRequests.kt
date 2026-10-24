@@ -63,7 +63,7 @@ Making changes in the app:
     const val NO_LOOKUPS = "The product database is turned off in this app, so use your own knowledge for branded products too."
 
     fun system(context: String, lookups: Boolean = false) =
-        SYSTEM + "\n" + AppRegion.PROMPT_HINT + "\n" + (if (lookups) LOOKUPS else NO_LOOKUPS) + "\n\n" + context
+        SYSTEM + "\n" + AppRegion.promptHint + "\n" + (if (lookups) LOOKUPS else NO_LOOKUPS) + "\n\n" + context
 }
 
 /**

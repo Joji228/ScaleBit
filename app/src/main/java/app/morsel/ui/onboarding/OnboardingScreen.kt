@@ -1,5 +1,7 @@
 package app.morsel.ui.onboarding
 
+import androidx.compose.ui.res.stringResource
+import app.morsel.R
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.core.FastOutSlowInEasing
@@ -45,12 +47,17 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import app.morsel.R
 import app.morsel.domain.Activity
 import app.morsel.domain.Nutrition
 import app.morsel.domain.Sex
 import app.morsel.ui.components.MorselCard
 import app.morsel.ui.components.NumberStepper
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import app.morsel.ui.settings.AddEngineSheet
+import app.morsel.ui.settings.SettingsViewModel
+import app.morsel.ui.settings.SheetButton
 import app.morsel.ui.components.PillSelector
 import app.morsel.ui.components.PrimaryButton
 import app.morsel.ui.components.ProgressLine
@@ -64,7 +71,7 @@ import java.util.Locale
 import kotlin.math.roundToLong
 
 @Composable
-fun OnboardingScreen(viewModel: OnboardingViewModel, onDone: () -> Unit, onExit: () -> Unit) {
+fun OnboardingScreen(viewModel: OnboardingViewModel, engines: SettingsViewModel, onDone: () -> Unit, onExit: () -> Unit) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     BackHandler { if (!viewModel.back()) onExit() }
 
@@ -114,6 +121,7 @@ fun OnboardingScreen(viewModel: OnboardingViewModel, onDone: () -> Unit, onExit:
                     Step.ACTIVITY -> ActivityStep(state, viewModel)
                     Step.PACE -> Pace(state, viewModel)
                     Step.PLAN -> Plan(state)
+                    Step.ENGINE -> EngineStep(engines)
                 }
             }
         }
@@ -121,10 +129,11 @@ fun OnboardingScreen(viewModel: OnboardingViewModel, onDone: () -> Unit, onExit:
         PrimaryButton(
             text = when (state.step) {
                 Step.WELCOME -> "Get started"
-                Step.PLAN -> if (state.edit) "Save" else "Start tracking"
+                Step.PLAN -> if (state.edit) "Save" else "Continue"
+                Step.ENGINE -> "Start tracking"
                 else -> "Continue"
             },
-            onClick = { if (state.step == Step.PLAN) viewModel.finish(onDone) else viewModel.next() },
+            onClick = { if (state.step == Step.ENGINE || (state.step == Step.PLAN && state.edit)) viewModel.finish(onDone) else viewModel.next() },
             enabled = state.loaded,
             modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 16.dp),
         )
@@ -153,16 +162,16 @@ private fun Welcome() {
         Image(painterResource(R.drawable.ic_launcher_foreground), null, Modifier.size(150.dp))
     }
     Spacer(Modifier.height(32.dp))
-    Text("Welcome to ScaleBit", style = MaterialTheme.typography.displaySmall)
+    Text(stringResource(R.string.welcome_to_scalebit), style = MaterialTheme.typography.displaySmall)
     Spacer(Modifier.height(12.dp))
     Text(
-        "Snap a photo of your meal and ScaleBit estimates the calories and macros for you.",
+        stringResource(R.string.snap_a_photo_of_your_meal),
         style = MaterialTheme.typography.bodyLarge,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
     )
     Spacer(Modifier.height(8.dp))
     Text(
-        "First, a few quick questions to set your daily target. It takes about 30 seconds.",
+        stringResource(R.string.first_a_few_quick_questions_to),
         style = MaterialTheme.typography.bodyLarge,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
     )
@@ -258,10 +267,10 @@ private fun Plan(state: OnboardingState) {
     val targets = state.targets
     Heading("Your daily plan", "You can change any of this later in Settings.")
     MorselCard {
-        Text("Daily calories", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text(stringResource(R.string.daily_calories), style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
         Row(verticalAlignment = Alignment.Bottom) {
             Text(targets.kcal.format(), style = MaterialTheme.typography.displayMedium.merge(Numeric), color = MaterialTheme.colorScheme.primary)
-            Text(" kcal", style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(bottom = 8.dp))
+            Text(stringResource(R.string.kcal), style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(bottom = 8.dp))
         }
         Spacer(Modifier.height(16.dp))
         Row {
@@ -287,7 +296,7 @@ private fun Plan(state: OnboardingState) {
     }
     Spacer(Modifier.height(12.dp))
     Text(
-        "Calories use the Mifflin-St Jeor equation; water uses your weight and activity. Estimates only, not medical advice.",
+        stringResource(R.string.calories_use_the_mifflin_st_jeor),
         style = MaterialTheme.typography.bodySmall,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
     )
@@ -342,5 +351,41 @@ private fun SelectableCard(title: String, subtitle: String, selected: Boolean, o
                 }
             }
         }
+    }
+}
+
+/** The last step: connect an AI engine now, or skip and do it later in Settings. */
+@Composable
+private fun EngineStep(engines: SettingsViewModel) {
+    val settings by engines.state.collectAsStateWithLifecycle()
+    var sheet by remember { mutableStateOf(false) }
+    val connected = settings.ai.activeEngines.filter { settings.ai.keyFor(it).isNotBlank() }
+    Heading(
+        "Connect an AI engine",
+        "Photo scans, typed descriptions and the AI coach use your own API key. Set one up now, or later in Settings → AI engine.",
+    )
+    MorselCard {
+        Text(
+            if (connected.isEmpty()) "No engine yet. Scans will ask you to add one." else "Connected: " + connected.joinToString { it.title },
+            style = MaterialTheme.typography.bodyLarge,
+        )
+        Spacer(Modifier.height(12.dp))
+        SheetButton("Set up an engine", filled = true, modifier = Modifier.fillMaxWidth()) { sheet = true }
+    }
+    Spacer(Modifier.height(12.dp))
+    Text(
+        stringResource(R.string.your_key_stays_on_this_phone),
+        style = MaterialTheme.typography.bodySmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+    )
+    if (sheet) {
+        AddEngineSheet(
+            addable = settings.ai.addableEngines,
+            viewModel = engines,
+            onDismiss = {
+                sheet = false
+                engines.resetKeyCheck()
+            },
+        )
     }
 }

@@ -1,5 +1,7 @@
 package app.morsel.ui.scale
 
+import androidx.compose.ui.res.stringResource
+import app.morsel.R
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Animatable
@@ -182,7 +184,7 @@ fun AutoWeighIn(container: AppContainer, onOpenBody: () -> Unit) {
             onDismissRequest = {},
             containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
             icon = { Icon(Icons.Rounded.MonitorWeight, null) },
-            title = { Text("Is this you?") },
+            title = { Text(stringResource(R.string.is_this_you)) },
             text = {
                 Text(
                     "The scale read ${formatKg(done.kg)}, more than ${WeighInDetector.SAME_PERSON_KG.toInt()} kg away from your last " +
@@ -193,14 +195,14 @@ fun AutoWeighIn(container: AppContainer, onOpenBody: () -> Unit) {
                 TextButton(onClick = {
                     askAbout = null
                     save(done)
-                }) { Text("Yes, save it") }
+                }) { Text(stringResource(R.string.yes_save_it)) }
             },
             dismissButton = {
                 TextButton(onClick = {
                     askAbout = null
                     close()
                     dismissed = false
-                }) { Text("Not me") }
+                }) { Text(stringResource(R.string.not_me)) }
             },
         )
     }
@@ -238,7 +240,7 @@ private fun ScaleScreen(kg: Double, stage: Stage, onClose: () -> Unit) {
                 .padding(horizontal = 32.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            Text("Smart scale", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(stringResource(R.string.smart_scale), style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
             Spacer(Modifier.height(24.dp))
             Box(contentAlignment = Alignment.Center) {
                 Dial(shown, Modifier.fillMaxWidth().aspectRatio(1f))
@@ -249,7 +251,7 @@ private fun ScaleScreen(kg: Double, stage: Stage, onClose: () -> Unit) {
                         style = MaterialTheme.typography.displayLarge.merge(Numeric).copy(fontSize = 64.sp),
                     )
                     Spacer(Modifier.width(6.dp))
-                    Text("kg", style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(bottom = 12.dp))
+                    Text(stringResource(R.string.kg_2), style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(bottom = 12.dp))
                 }
             }
             Spacer(Modifier.height(8.dp))

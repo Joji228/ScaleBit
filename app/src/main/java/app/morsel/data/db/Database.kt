@@ -120,6 +120,9 @@ interface MealDao {
     @Query("DELETE FROM meals WHERE id = :id")
     suspend fun delete(id: Long)
 
+    @Query("SELECT food_items.* FROM food_items INNER JOIN meals ON meals.id = food_items.mealId WHERE meals.date >= :since ORDER BY meals.timestamp DESC")
+    suspend fun itemsSince(since: String): List<FoodItemEntity>
+
     @Query("SELECT * FROM meals")
     suspend fun allMeals(): List<MealEntity>
 

@@ -13,7 +13,7 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlin.math.abs
 
-enum class Step { WELCOME, BASICS, WEIGHT, ACTIVITY, PACE, PLAN }
+enum class Step { WELCOME, BASICS, WEIGHT, ACTIVITY, PACE, PLAN, ENGINE }
 
 data class OnboardingState(
     val loaded: Boolean = false,
@@ -27,7 +27,7 @@ data class OnboardingState(
     val targets: Targets get() = Nutrition.targets(profile, currentWeight, if (profile.smartTarget) tdeeScale else 1.0)
     val maintaining: Boolean get() = abs(profile.goalWeightKg - currentWeight) < 0.3
     val steps: List<Step>
-        get() = Step.entries.filter { (it != Step.WELCOME || !edit) && (it != Step.PACE || !maintaining) }
+        get() = Step.entries.filter { (it != Step.WELCOME || !edit) && (it != Step.PACE || !maintaining) && (it != Step.ENGINE || !edit) }
 }
 
 class OnboardingViewModel(private val app: AppContainer, edit: Boolean) : ViewModel() {

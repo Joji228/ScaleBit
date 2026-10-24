@@ -6,6 +6,7 @@ import androidx.room.Room
 import app.morsel.ai.AiService
 import app.morsel.ai.AnalysisResult
 import app.morsel.ble.MiScaleScanner
+import app.morsel.data.AppRegion
 import app.morsel.data.CoachStore
 import app.morsel.data.DayClock
 import app.morsel.data.MorselRepository
@@ -87,6 +88,8 @@ class AppContainer(context: Context) {
     init {
         // Settings → Haptic feedback decides whether anything in the app vibrates.
         scope.launch { settings.hapticsEnabled.collect { HapticsSetting.enabled = it } }
+        // The Greek tuning is read by the AI prompts and search from one flag; keep it in step with Settings.
+        scope.launch { settings.regionGreece.collect { AppRegion.greekTuning = it } }
     }
 
     init {
@@ -97,7 +100,6 @@ class AppContainer(context: Context) {
     init {
         // Housekeeping on launch: fix old model settings, drop stale captures, enforce the photo window.
         scope.launch {
-            runCatching { settings.migrate() }
             photos.clearCaptures()
             runCatching { repository.prunePhotos(photos.mealPhotos()) }
         }

@@ -59,10 +59,9 @@ class SettingsRepository(context: Context) {
     private val thinkingKey = stringPreferencesKey("deepseek_thinking")
     private val foodFactsKey = booleanPreferencesKey("use_food_facts")
     private val coachKey = booleanPreferencesKey("coach_enabled")
+    private val greekKey = booleanPreferencesKey("region_greece")
     private val hapticsKey = booleanPreferencesKey("haptics_enabled")
     private val coachTutorialKey = booleanPreferencesKey("coach_tutorial_done")
-    private val modelsMigratedKey = booleanPreferencesKey("models_auto_v2")
-    private val fallbackOffKey = booleanPreferencesKey("fallback_off_v3")
 
     private fun keyPref(provider: Provider) = stringPreferencesKey("${provider.prefix}_key")
 
@@ -92,6 +91,9 @@ class SettingsRepository(context: Context) {
      * until they turn it on. Deliberately not carried in backups: a restored phone asks again.
      */
     val coachEnabled: Flow<Boolean> = store.data.map { prefs -> prefs[coachKey] ?: false }.distinctUntilChanged()
+
+    /** Greek foods and brands tuning for scans, the coach and food search; on unless turned off. */
+    val regionGreece: Flow<Boolean> = store.data.map { prefs -> prefs[greekKey] ?: true }.distinctUntilChanged()
 
     /** False until the user has pulled the coach down once after turning it on (the hint shows until then). */
     val coachTutorialDone: Flow<Boolean> = store.data.map { prefs -> prefs[coachTutorialKey] ?: false }.distinctUntilChanged()
@@ -147,18 +149,8 @@ class SettingsRepository(context: Context) {
      *   "deepseek-chat" alias. Clear those so "Automatic" really is automatic.
      * - Fallback used to be on by default. It is now off, so reset whatever was stored once.
      */
-    suspend fun migrate() {
-        store.edit { prefs ->
-            if (prefs[modelsMigratedKey] != true) {
-                if (prefs[modelPref(Provider.DEEPSEEK)] in setOf("deepseek-chat", "deepseek-reasoner")) prefs.remove(modelPref(Provider.DEEPSEEK))
-                prefs.remove(modelPref(Provider.GEMINI))
-                prefs[modelsMigratedKey] = true
-            }
-            if (prefs[fallbackOffKey] != true) {
-                prefs.remove(fallbackKey)
-                prefs[fallbackOffKey] = true
-            }
-        }
+    suspend fun setRegionGreece(on: Boolean) {
+        store.edit { it[greekKey] = on }
     }
 
     suspend fun setFallback(enabled: Boolean) {
@@ -179,8 +171,6 @@ class SettingsRepository(context: Context) {
             val keys = Provider.entries.mapNotNull { p -> prefs[keyPref(p)]?.let { p to it } }
             val customUrl = prefs[customUrlKey]
             prefs.clear()
-            prefs[modelsMigratedKey] = true
-            prefs[fallbackOffKey] = true
             if (keepKeys) {
                 keys.forEach { (p, key) -> prefs[keyPref(p)] = key }
                 customUrl?.let { prefs[customUrlKey] = it }

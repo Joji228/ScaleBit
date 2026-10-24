@@ -1,5 +1,7 @@
 package app.morsel.ui.settings
 
+import androidx.compose.ui.res.stringResource
+import app.morsel.R
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.clickable
@@ -100,6 +102,7 @@ import app.morsel.ui.components.PillSelector
 import app.morsel.ui.components.RoundIconButton
 import app.morsel.ui.components.format
 import app.morsel.ui.theme.Nutrient
+import androidx.compose.material.icons.rounded.Restaurant
 import app.morsel.ui.update.UpdateDialog
 import java.time.LocalDate
 import kotlin.math.roundToInt
@@ -150,7 +153,7 @@ fun SettingsScreen(
         ) {
             RoundIconButton(Icons.AutoMirrored.Rounded.ArrowBack, "Back", onBack)
             Spacer(Modifier.width(14.dp))
-            Text("Settings", style = MaterialTheme.typography.headlineSmall)
+            Text(stringResource(R.string.settings), style = MaterialTheme.typography.headlineSmall)
         }
 
         LazyColumn(
@@ -188,16 +191,6 @@ fun SettingsScreen(
                             )
                         },
                         {
-                            ListRow(
-                                "Water goal",
-                                subtitle = if (p?.customWaterMl != null) "Custom target" else "Calculated from your weight and activity",
-                                value = state.targets?.let { "${(it.waterMl / 1000.0).format(2).trimEnd('0').trimEnd('.', ',')} L" },
-                                icon = Icons.Rounded.WaterDrop,
-                                iconTint = Nutrient.Water,
-                                onClick = { waterDialog = true },
-                            )
-                        },
-                        {
                             val estimate = state.estimate
                             SwitchRow(
                                 title = "Smart target",
@@ -213,6 +206,31 @@ fun SettingsScreen(
                                 onChange = { on -> viewModel.updateProfile { it.copy(smartTarget = on) } },
                                 icon = Icons.Rounded.Psychology,
                                 iconTint = Nutrient.Fat,
+                            )
+                        },
+                        {
+                            ListRow(
+                                "Water goal",
+                                subtitle = if (p?.customWaterMl != null) "Custom target" else "Calculated from your weight and activity",
+                                value = state.targets?.let { "${(it.waterMl / 1000.0).format(2).trimEnd('0').trimEnd('.', ',')} L" },
+                                icon = Icons.Rounded.WaterDrop,
+                                iconTint = Nutrient.Water,
+                                onClick = { waterDialog = true },
+                            )
+                        },
+                        {
+                            val greek by viewModel.greekTuning.collectAsStateWithLifecycle(initialValue = true)
+                            SwitchRow(
+                                title = "Greek foods and brands",
+                                subtitle = if (greek) {
+                                    "On. Scans, the coach and food search expect Greek dishes and brands"
+                                } else {
+                                    "Off. Foods are estimated without regional hints"
+                                },
+                                checked = greek,
+                                onChange = viewModel::setGreekTuning,
+                                icon = Icons.Rounded.Restaurant,
+                                iconTint = Nutrient.Protein,
                             )
                         },
                     ),
@@ -235,6 +253,49 @@ fun SettingsScreen(
                                 },
                                 icon = Icons.Rounded.AutoAwesome,
                                 onClick = onAiEngine,
+                            )
+                        },
+                    ),
+                )
+            }
+
+            item {
+                val coachOn by viewModel.coachEnabled.collectAsStateWithLifecycle(initialValue = false)
+                GroupedList(
+                    rows = listOf(
+                        {
+                            SwitchRow(
+                                title = "AI coach (beta)",
+                                subtitle = if (coachOn) {
+                                    "On. Pull down on any screen and hold to open it"
+                                } else {
+                                    "A chat that sees your meals, water, weigh-ins and body composition and explains how you're doing. Uses your AI engine"
+                                },
+                                checked = coachOn,
+                                // Turning it on asks first, since it sends your data to the AI engine; off needs no question.
+                                onChange = { on -> if (on) coachConfirm = true else viewModel.setCoachEnabled(false) },
+                                icon = Icons.Rounded.Forum,
+                            )
+                        },
+                    ),
+                )
+            }
+
+            item {
+                val foodFactsOn by viewModel.useFoodFacts.collectAsStateWithLifecycle(initialValue = false)
+                GroupedList(
+                    rows = listOf(
+                        {
+                            SwitchRow(
+                                title = "Use Open Food Facts",
+                                subtitle = if (foodFactsOn) {
+                                    "On. Packaged foods in scans are checked against their real labels, and Add item can search products. Adds a couple of seconds to scans"
+                                } else {
+                                    "Free, open product database. Checks packaged foods in scans and lets you search products when adding food. Adds a couple of seconds; only food names are sent, never photos"
+                                },
+                                checked = foodFactsOn,
+                                onChange = viewModel::setUseFoodFacts,
+                                icon = Icons.Rounded.Search,
                             )
                         },
                     ),
@@ -299,32 +360,19 @@ fun SettingsScreen(
                         },
                         {
                             ListRow(
-                                "Meal photos",
+                                "Storage and photos",
                                 subtitle = (photoStorage?.second?.let { if (it == 1) "1 photo · " else "$it photos · " } ?: "") +
-                                    "deleted after $PHOTO_DAYS days, meals stay logged. Tap to delete now",
-                                value = photoStorage?.first,
-                                icon = Icons.Rounded.PhotoLibrary,
+                                    "photos are deleted after $PHOTO_DAYS days, meals stay logged. Tap to delete photos now",
+                                value = storage?.let { formatBytes(it.totalBytes) },
                                 iconTint = MaterialTheme.colorScheme.onSurfaceVariant,
                                 onClick = { photoDialog = true },
-                            )
-                        },
-                        {
-                            val usage = storage
-                            ListRow(
-                                "Storage used",
-                                subtitle = usage?.let {
-                                    "App ${formatBytes(it.appBytes)} · your data ${formatBytes(it.dataBytes)} (meals, photos, settings)"
-                                },
-                                value = usage?.let { formatBytes(it.totalBytes) },
-                                icon = Icons.Rounded.Storage,
-                                iconTint = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
                         },
                     ),
                 )
             }
 
-            item { GroupLabel("Smart scale") }
+            item { GroupLabel("Devices") }
             item {
                 GroupedList(
                     rows = listOf(
@@ -346,52 +394,7 @@ fun SettingsScreen(
                 )
             }
 
-            item { GroupLabel("Food database") }
-            item {
-                val foodFactsOn by viewModel.useFoodFacts.collectAsStateWithLifecycle(initialValue = false)
-                GroupedList(
-                    rows = listOf(
-                        {
-                            SwitchRow(
-                                title = "Use Open Food Facts",
-                                subtitle = if (foodFactsOn) {
-                                    "On. Packaged foods in scans are checked against their real labels, and Add item can search products. Adds a couple of seconds to scans"
-                                } else {
-                                    "Free, open product database. Checks packaged foods in scans and lets you search products when adding food. Adds a couple of seconds; only food names are sent, never photos"
-                                },
-                                checked = foodFactsOn,
-                                onChange = viewModel::setUseFoodFacts,
-                                icon = Icons.Rounded.Search,
-                            )
-                        },
-                    ),
-                )
-            }
-
-            item { GroupLabel("AI coach · Beta") }
-            item {
-                val coachOn by viewModel.coachEnabled.collectAsStateWithLifecycle(initialValue = false)
-                GroupedList(
-                    rows = listOf(
-                        {
-                            SwitchRow(
-                                title = "AI coach",
-                                subtitle = if (coachOn) {
-                                    "On. Pull down on any screen and hold to open it"
-                                } else {
-                                    "A chat that sees your meals, water, weigh-ins and body composition and explains how you're doing. Uses your AI engine"
-                                },
-                                checked = coachOn,
-                                // Turning it on asks first, since it sends your data to the AI engine; off needs no question.
-                                onChange = { on -> if (on) coachConfirm = true else viewModel.setCoachEnabled(false) },
-                                icon = Icons.Rounded.Forum,
-                            )
-                        },
-                    ),
-                )
-            }
-
-            item { GroupLabel("Updates") }
+            item { GroupLabel("About") }
             item {
                 val update by viewModel.updates.collectAsStateWithLifecycle()
                 val installed = context.packageManager.getPackageInfo(context.packageName, 0).versionName.orEmpty()
@@ -456,6 +459,16 @@ fun SettingsScreen(
                 )
             }
 
+            item {
+                Text(
+                    "ScaleBit ${context.packageManager.getPackageInfo(context.packageName, 0).versionName} · " +
+                        "Your data stays on this phone. Photos are sent only to the AI provider you choose.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 16.dp),
+                )
+            }
+
             item { GroupLabel("Danger zone") }
             item {
                 GroupedList(
@@ -473,15 +486,7 @@ fun SettingsScreen(
                 )
             }
 
-            item {
-                Text(
-                    "ScaleBit ${context.packageManager.getPackageInfo(context.packageName, 0).versionName} · " +
-                        "Your data stays on this phone. Photos are sent only to the AI provider you choose.",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 16.dp),
-                )
-            }
+
         }
     }
 
@@ -494,22 +499,22 @@ fun SettingsScreen(
         AlertDialog(
             onDismissRequest = { targetDialog = false },
             containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-            title = { Text("Daily calories") },
+            title = { Text(stringResource(R.string.daily_calories)) },
             text = { NumberStepper("Target", kcal, { kcal = it }, 800.0..6000.0, 50.0, "kcal") },
             confirmButton = {
                 TextButton(onClick = {
                     viewModel.updateProfile { it.copy(customKcal = kcal.toInt()) }
                     targetDialog = false
-                }) { Text("Save") }
+                }) { Text(stringResource(R.string.save)) }
             },
             dismissButton = {
                 if (profile?.customKcal != null) {
                     TextButton(onClick = {
                         viewModel.updateProfile { it.copy(customKcal = null) }
                         targetDialog = false
-                    }) { Text("Use automatic") }
+                    }) { Text(stringResource(R.string.use_automatic)) }
                 } else {
-                    TextButton(onClick = { targetDialog = false }) { Text("Cancel") }
+                    TextButton(onClick = { targetDialog = false }) { Text(stringResource(R.string.cancel)) }
                 }
             },
         )
@@ -519,22 +524,22 @@ fun SettingsScreen(
         AlertDialog(
             onDismissRequest = { waterDialog = false },
             containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-            title = { Text("Water goal") },
+            title = { Text(stringResource(R.string.water_goal)) },
             text = { NumberStepper("Per day", ml, { ml = it }, 500.0..6000.0, 250.0, "ml") },
             confirmButton = {
                 TextButton(onClick = {
                     viewModel.updateProfile { it.copy(customWaterMl = ml.toInt()) }
                     waterDialog = false
-                }) { Text("Save") }
+                }) { Text(stringResource(R.string.save)) }
             },
             dismissButton = {
                 if (state.profile?.customWaterMl != null) {
                     TextButton(onClick = {
                         viewModel.updateProfile { it.copy(customWaterMl = null) }
                         waterDialog = false
-                    }) { Text("Use automatic") }
+                    }) { Text(stringResource(R.string.use_automatic)) }
                 } else {
-                    TextButton(onClick = { waterDialog = false }) { Text("Cancel") }
+                    TextButton(onClick = { waterDialog = false }) { Text(stringResource(R.string.cancel)) }
                 }
             },
         )
@@ -557,26 +562,26 @@ fun SettingsScreen(
             },
             confirmButton = {
                 if (count == 0) {
-                    TextButton(onClick = { photoDialog = false }) { Text("OK") }
+                    TextButton(onClick = { photoDialog = false }) { Text(stringResource(R.string.ok)) }
                 } else {
                     TextButton(onClick = {
                         photoDialog = false
                         viewModel.deleteAllPhotos()
-                    }) { Text("Delete photos", color = MaterialTheme.colorScheme.error) }
+                    }) { Text(stringResource(R.string.delete_photos), color = MaterialTheme.colorScheme.error) }
                 }
             },
             dismissButton = {
-                if (count > 0) TextButton(onClick = { photoDialog = false }) { Text("Cancel") }
+                if (count > 0) TextButton(onClick = { photoDialog = false }) { Text(stringResource(R.string.cancel)) }
             },
         )
     }
     if (scaleConfirm) {
         AlertDialog(
             onDismissRequest = { scaleConfirm = false },
-            title = { Text("Turn on the smart scale?") },
+            title = { Text(stringResource(R.string.turn_on_the_smart_scale)) },
             text = {
                 Text(
-                    "This works only with the Xiaomi Mi Body Composition Scale 2, model XMTZC05HM: the square glass scale " +
+                    stringResource(R.string.this_works_only_with_the_xiaomi) +
                         "with metal pads on top. Other Xiaomi scales won't be recognized.\n\n" +
                         "While ScaleBit is open on your screen, it listens for the scale and saves each weigh-in by itself, " +
                         "with no button to press. It never listens in the background. There's nothing to pair, it never needs " +
@@ -593,19 +598,19 @@ fun SettingsScreen(
                     if (ContextCompat.checkSelfPermission(scaleContext, Manifest.permission.BLUETOOTH_SCAN) != PackageManager.PERMISSION_GRANTED) {
                         askBluetooth.launch(Manifest.permission.BLUETOOTH_SCAN)
                     }
-                }) { Text("Turn on") }
+                }) { Text(stringResource(R.string.turn_on)) }
             },
-            dismissButton = { TextButton(onClick = { scaleConfirm = false }) { Text("Cancel") } },
+            dismissButton = { TextButton(onClick = { scaleConfirm = false }) { Text(stringResource(R.string.cancel)) } },
         )
     }
     if (coachConfirm) {
         AlertDialog(
             onDismissRequest = { coachConfirm = false },
             containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-            title = { Text("Turn on the AI coach?") },
+            title = { Text(stringResource(R.string.turn_on_the_ai_coach)) },
             text = {
                 Text(
-                    "The coach is a chat that answers questions about your progress from your own data. Ask it to log food, " +
+                    stringResource(R.string.the_coach_is_a_chat_that) +
                         "water or a weigh-in, or to change a target, and it prepares the change for you to accept or decline.\n\n" +
                         "Each question sends a summary of your data to your AI engine (${state.ai.primary.title}): your profile " +
                         "(sex, age, height and goals), daily totals, recent meals, water, weigh-ins and body composition. " +
@@ -618,9 +623,9 @@ fun SettingsScreen(
                 TextButton(onClick = {
                     viewModel.setCoachEnabled(true)
                     coachConfirm = false
-                }) { Text("Turn on") }
+                }) { Text(stringResource(R.string.turn_on)) }
             },
-            dismissButton = { TextButton(onClick = { coachConfirm = false }) { Text("Cancel") } },
+            dismissButton = { TextButton(onClick = { coachConfirm = false }) { Text(stringResource(R.string.cancel)) } },
         )
     }
     if (resetDialog) {
@@ -637,7 +642,7 @@ fun SettingsScreen(
             onDismissRequest = { viewModel.message.value = null },
             containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
             text = { Text(it) },
-            confirmButton = { TextButton(onClick = { viewModel.message.value = null }) { Text("OK") } },
+            confirmButton = { TextButton(onClick = { viewModel.message.value = null }) { Text(stringResource(R.string.ok)) } },
         )
     }
 }
@@ -704,11 +709,11 @@ private fun ResetDialog(onDismiss: () -> Unit, onConfirm: (keepKeys: Boolean) ->
         onDismissRequest = onDismiss,
         containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
         icon = { Icon(Icons.Rounded.DeleteForever, null, tint = MaterialTheme.colorScheme.error) },
-        title = { Text("Erase everything?") },
+        title = { Text(stringResource(R.string.erase_everything)) },
         text = {
             Column {
                 Text(
-                    "All meals, water, weight history, photos and your profile will be deleted from this phone. " +
+                    stringResource(R.string.all_meals_water_weight_history_photos) +
                         "This can't be undone. Export a backup first if you might want it back.",
                     style = MaterialTheme.typography.bodyMedium,
                 )
@@ -720,7 +725,7 @@ private fun ResetDialog(onDismiss: () -> Unit, onConfirm: (keepKeys: Boolean) ->
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Checkbox(checked = removeKeys, onCheckedChange = { removeKeys = it })
-                    Text("Also remove my API keys", style = MaterialTheme.typography.bodyMedium)
+                    Text(stringResource(R.string.also_remove_my_api_keys), style = MaterialTheme.typography.bodyMedium)
                 }
             }
         },
@@ -729,7 +734,7 @@ private fun ResetDialog(onDismiss: () -> Unit, onConfirm: (keepKeys: Boolean) ->
                 Text(if (armed) "Tap again to erase" else "Erase", color = MaterialTheme.colorScheme.error)
             }
         },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) } },
     )
 }
 
@@ -750,7 +755,7 @@ private fun AccentPicker(selected: AccentColor, onSelect: (AccentColor) -> Unit,
     val dark = MaterialTheme.colorScheme.background.luminance() < 0.5f
     Column(modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Text("Accent color", style = MaterialTheme.typography.titleSmall, modifier = Modifier.weight(1f))
+            Text(stringResource(R.string.accent_color), style = MaterialTheme.typography.titleSmall, modifier = Modifier.weight(1f))
             Text(selected.title, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
         AccentColor.entries.chunked(5).forEach { rowColors ->

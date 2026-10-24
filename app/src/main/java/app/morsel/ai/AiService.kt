@@ -108,7 +108,7 @@ If there is no food, return {"meal_name": "", "items": [], "confidence": "low", 
             },
         )
         if (!note.isNullOrBlank()) append("\nUser's description: ").append(note.trim())
-        append("\n").append(AppRegion.PROMPT_HINT)
+        AppRegion.promptHint.takeIf { it.isNotBlank() }?.let { append("\n").append(it) }
         append("\nLocal time: ").append(LocalDateTime.now().format(DateTimeFormatter.ofPattern("EEEE HH:mm", Locale.ENGLISH)))
         append("\nReturn JSON only.")
     }

@@ -1,5 +1,7 @@
 package app.morsel.ui.settings
 
+import androidx.compose.ui.res.stringResource
+import app.morsel.R
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
@@ -160,7 +162,7 @@ fun AiSettingsScreen(viewModel: SettingsViewModel, onBack: () -> Unit) {
         ) {
             RoundIconButton(Icons.AutoMirrored.Rounded.ArrowBack, "Back", onBack)
             Spacer(Modifier.width(14.dp))
-            Text("AI engine", style = MaterialTheme.typography.headlineSmall)
+            Text(stringResource(R.string.ai_engine), style = MaterialTheme.typography.headlineSmall)
         }
 
         LazyColumn(
@@ -172,7 +174,7 @@ fun AiSettingsScreen(viewModel: SettingsViewModel, onBack: () -> Unit) {
 
             item {
                 Text(
-                    "Your photos go only to the engine you pick, using your own API key. Keys are stored encrypted on this phone.",
+                    stringResource(R.string.your_photos_go_only_to_the),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(horizontal = 6.dp),
@@ -183,7 +185,7 @@ fun AiSettingsScreen(viewModel: SettingsViewModel, onBack: () -> Unit) {
             if (ai.activeEngines.size > 1) {
                 item {
                     Text(
-                        "Tap an engine to use it for scans and the coach.",
+                        stringResource(R.string.tap_an_engine_to_use_it),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.padding(horizontal = 6.dp),
@@ -217,7 +219,7 @@ fun AiSettingsScreen(viewModel: SettingsViewModel, onBack: () -> Unit) {
                         Row(Modifier.padding(vertical = 14.dp), horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically) {
                             Icon(Icons.Rounded.Add, null, Modifier.size(20.dp), tint = MaterialTheme.colorScheme.primary)
                             Spacer(Modifier.width(8.dp))
-                            Text("Add engine", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
+                            Text(stringResource(R.string.add_engine), style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
                         }
                     }
                 } else {
@@ -326,7 +328,7 @@ fun AiSettingsScreen(viewModel: SettingsViewModel, onBack: () -> Unit) {
             title = { Text("Remove ${provider.title}?") },
             text = {
                 Text(
-                    "Its saved API key is deleted from this phone." +
+                    stringResource(R.string.its_saved_api_key_is_deleted) +
                         if (provider == ai.primary) " Scans will use ${(ai.activeEngines - provider).first().title} instead." else "",
                 )
             },
@@ -334,9 +336,9 @@ fun AiSettingsScreen(viewModel: SettingsViewModel, onBack: () -> Unit) {
                 TextButton(onClick = {
                     viewModel.removeEngine(provider)
                     removing = null
-                }) { Text("Remove", color = MaterialTheme.colorScheme.error) }
+                }) { Text(stringResource(R.string.remove), color = MaterialTheme.colorScheme.error) }
             },
-            dismissButton = { TextButton(onClick = { removing = null }) { Text("Cancel") } },
+            dismissButton = { TextButton(onClick = { removing = null }) { Text(stringResource(R.string.cancel)) } },
         )
     }
 }
@@ -373,7 +375,7 @@ private fun BalanceCard(provider: Provider, ai: AiSettings, state: BalanceState,
                 Spacer(Modifier.width(12.dp))
                 Column(Modifier.weight(1f)) {
                     Text(
-                        "CREDIT LEFT",
+                        stringResource(R.string.credit_left),
                         style = MaterialTheme.typography.labelSmall.copy(letterSpacing = 1.2.sp, fontWeight = FontWeight.SemiBold),
                         color = primary,
                     )
@@ -411,7 +413,7 @@ private fun BalanceCard(provider: Provider, ai: AiSettings, state: BalanceState,
                             )
                         }
                         s is BalanceState.Failed -> Text(s.message, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.error)
-                        else -> Text("Checking…", style = MaterialTheme.typography.displaySmall.merge(Numeric), color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        else -> Text(stringResource(R.string.checking), style = MaterialTheme.typography.displaySmall.merge(Numeric), color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                 }
             }
@@ -517,7 +519,7 @@ private fun EngineCard(
                     ) {
                         Icon(Icons.Rounded.Check, null, Modifier.size(14.dp), tint = MaterialTheme.colorScheme.onPrimary)
                         Spacer(Modifier.width(4.dp))
-                        Text("In use", style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold), color = MaterialTheme.colorScheme.onPrimary)
+                        Text(stringResource(R.string.in_use), style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold), color = MaterialTheme.colorScheme.onPrimary)
                     }
                 }
                 if (onRemove != null) {
@@ -581,528 +583,5 @@ private fun SettingRow(icon: ImageVector, title: String, value: String?, onClick
             Pill(it.text, it.color)
         }
         Icon(Icons.AutoMirrored.Rounded.KeyboardArrowRight, null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
-    }
-}
-
-/**
- * A sheet that slides up from the bottom with a drag handle, a title and a short explanation.
- * Choosing something closes it with the same slide; [content] gets a `close` to call.
- */
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun Sheet(
-    title: String,
-    subtitle: String? = null,
-    onDismiss: () -> Unit,
-    /**
-     * Whether the whole sheet scrolls. A sheet with its own scrolling list (the model picker) turns
-     * this off: a list inside a scrolling sheet inside a draggable sheet made the three fight over
-     * every upward swipe, so the list bounced up and down.
-     */
-    scrollable: Boolean = true,
-    content: @Composable ColumnScope.(close: () -> Unit) -> Unit,
-) {
-    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
-    val scope = rememberCoroutineScope()
-    val close: () -> Unit = { scope.launch { sheetState.hide() }.invokeOnCompletion { onDismiss() } }
-    ModalBottomSheet(
-        onDismissRequest = onDismiss,
-        sheetState = sheetState,
-        containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-        contentColor = MaterialTheme.colorScheme.onSurface,
-        shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
-    ) {
-        Column(
-            Modifier
-                .fillMaxWidth()
-                .navigationBarsPadding()
-                .imePadding()
-                .then(if (scrollable) Modifier.verticalScroll(rememberScrollState()) else Modifier)
-                .padding(start = 20.dp, end = 20.dp, bottom = 20.dp),
-        ) {
-            Text(title, style = MaterialTheme.typography.titleLarge)
-            subtitle?.let {
-                Spacer(Modifier.height(6.dp))
-                Text(it, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            }
-            Spacer(Modifier.height(16.dp))
-            content(close)
-        }
-    }
-}
-
-/** A choice in a sheet: rounded, the picked one tinted with the accent colour and ticked. */
-@Composable
-private fun Option(title: String, subtitle: String? = null, selected: Boolean, enabled: Boolean = true, badge: String? = null, onClick: () -> Unit) {
-    val primary = MaterialTheme.colorScheme.primary
-    val haptics = rememberHaptics()
-    Surface(
-        onClick = {
-            haptics.tick()
-            onClick()
-        },
-        enabled = enabled,
-        shape = RoundedCornerShape(16.dp),
-        color = if (selected) primary.copy(alpha = 0.14f) else Color.Transparent,
-        border = BorderStroke(1.dp, if (selected) primary.copy(alpha = 0.5f) else MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)),
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 4.dp),
-    ) {
-        Row(Modifier.padding(horizontal = 16.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
-            Column(Modifier.weight(1f)) {
-                Text(
-                    title,
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = if (enabled) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-                subtitle?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
-            }
-            badge?.let {
-                Spacer(Modifier.width(8.dp))
-                Pill(it, primary)
-            }
-            if (selected) {
-                Spacer(Modifier.width(8.dp))
-                Icon(Icons.Rounded.CheckCircle, null, tint = primary)
-            }
-        }
-    }
-}
-
-@Composable
-private fun ServiceSheet(provider: Provider, ai: AiSettings, onPick: (Provider) -> Unit, onDismiss: () -> Unit) {
-    Sheet(title = "Choose a service", subtitle = "Each service needs its own API key. Keys you saved before stay on this phone.", onDismiss = onDismiss) { close ->
-        Provider.entries.forEach { option ->
-            val taken = option != provider && option in ai.activeEngines
-            Option(option.title, if (taken) "Already added" else option.byline, selected = option == provider, enabled = !taken) {
-                if (option != provider) onPick(option)
-                close()
-            }
-        }
-    }
-}
-
-@Composable
-private fun KeySheet(provider: Provider, initialKey: String, initialUrl: String, viewModel: SettingsViewModel, onDismiss: () -> Unit) {
-    var key by remember { mutableStateOf(initialKey) }
-    var url by remember { mutableStateOf(initialUrl) }
-    var visible by remember { mutableStateOf(false) }
-    val check by viewModel.keyCheck.collectAsStateWithLifecycle()
-    val context = LocalContext.current
-    Sheet(title = "${provider.title} API key", subtitle = provider.keyHelp, onDismiss = onDismiss) { close ->
-        GetKeyButton(provider)
-        PasteKeyOnReturn(provider, key) { key = it }
-        if (provider.needsBaseUrl) {
-            OutlinedTextField(
-                value = url,
-                onValueChange = { url = it },
-                singleLine = true,
-                label = { Text("Service address") },
-                placeholder = { Text("https://openrouter.ai/api/v1") },
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri),
-                shape = RoundedCornerShape(14.dp),
-                modifier = Modifier.fillMaxWidth(),
-            )
-            Spacer(Modifier.height(10.dp))
-        }
-        OutlinedTextField(
-            value = key,
-            onValueChange = { key = it },
-            singleLine = true,
-            placeholder = { Text("Paste your key") },
-            visualTransformation = if (visible) VisualTransformation.None else PasswordVisualTransformation(),
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
-            trailingIcon = {
-                KeyFieldIcons(
-                    visible = visible,
-                    onToggle = { visible = !visible },
-                    onPaste = { clipboardText(context)?.trim()?.takeIf { it.isNotEmpty() }?.let { key = it } },
-                )
-            },
-            shape = RoundedCornerShape(14.dp),
-            modifier = Modifier.fillMaxWidth(),
-        )
-        Spacer(Modifier.height(12.dp))
-        CheckStatus(check)
-        Spacer(Modifier.height(16.dp))
-        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            SheetButton("Done", filled = false, modifier = Modifier.weight(1f), onClick = close)
-            SheetButton(if (key.isBlank()) "Remove key" else "Save and test", filled = true, modifier = Modifier.weight(1f)) {
-                viewModel.saveKey(provider, key, url)
-            }
-        }
-    }
-}
-
-@Composable
-private fun SheetButton(label: String, filled: Boolean, modifier: Modifier, onClick: () -> Unit) {
-    val haptics = rememberHaptics()
-    Surface(
-        onClick = {
-            haptics.click()
-            onClick()
-        },
-        shape = RoundedCornerShape(16.dp),
-        color = if (filled) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceContainerHighest,
-        contentColor = if (filled) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface,
-        modifier = modifier.height(50.dp),
-    ) {
-        Box(contentAlignment = Alignment.Center) {
-            Text(label, style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.SemiBold))
-        }
-    }
-}
-
-/**
- * Adding an engine in four steps: choose the platform, open its key page, paste the key, save and
- * test. A key copied on that page is pasted in by itself when you come back to ScaleBit.
- */
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun AddEngineSheet(addable: List<Provider>, viewModel: SettingsViewModel, onDismiss: () -> Unit) {
-    val context = LocalContext.current
-    var provider by remember { mutableStateOf<Provider?>(null) }
-    var menuOpen by remember { mutableStateOf(false) }
-    var key by remember { mutableStateOf("") }
-    var url by remember { mutableStateOf("") }
-    var visible by remember { mutableStateOf(false) }
-    var pasted by remember { mutableStateOf(false) }
-    val check by viewModel.keyCheck.collectAsStateWithLifecycle()
-    val chosen = provider
-    Sheet(title = "Add an AI engine", subtitle = "Four quick steps. Your key stays on this phone.", onDismiss = onDismiss) { close ->
-        Step(1, "Choose a platform") {
-            ExposedDropdownMenuBox(expanded = menuOpen, onExpandedChange = { menuOpen = it }) {
-                OutlinedTextField(
-                    value = chosen?.title.orEmpty(),
-                    onValueChange = {},
-                    readOnly = true,
-                    singleLine = true,
-                    label = { Text("AI platform") },
-                    placeholder = { Text("Choose one") },
-                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = menuOpen) },
-                    shape = RoundedCornerShape(14.dp),
-                    modifier = Modifier.menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable).fillMaxWidth(),
-                )
-                ExposedDropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
-                    addable.forEach { option ->
-                        DropdownMenuItem(
-                            text = {
-                                Column {
-                                    Text(option.title, style = MaterialTheme.typography.bodyLarge)
-                                    option.byline?.let {
-                                        Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                                    }
-                                }
-                            },
-                            onClick = {
-                                provider = option
-                                key = ""
-                                url = ""
-                                pasted = false
-                                menuOpen = false
-                            },
-                        )
-                    }
-                }
-            }
-        }
-
-        if (chosen != null) {
-            Step(2, "Get your ${chosen.title} key") {
-                GetKeyButton(chosen)
-                Text(
-                    if (chosen.keyUrl != null) {
-                        "Copy the key on that page, then come back here. ScaleBit pastes it in for you."
-                    } else {
-                        chosen.keyHelp
-                    },
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-
-            Step(3, "Paste your key") {
-                PasteKeyOnReturn(chosen, key) {
-                    key = it
-                    pasted = true
-                }
-                if (chosen.needsBaseUrl) {
-                    OutlinedTextField(
-                        value = url,
-                        onValueChange = { url = it },
-                        singleLine = true,
-                        label = { Text("Service address") },
-                        placeholder = { Text("https://openrouter.ai/api/v1") },
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri),
-                        shape = RoundedCornerShape(14.dp),
-                        modifier = Modifier.fillMaxWidth(),
-                    )
-                    Spacer(Modifier.height(10.dp))
-                }
-                OutlinedTextField(
-                    value = key,
-                    onValueChange = {
-                        key = it
-                        pasted = false
-                    },
-                    singleLine = true,
-                    placeholder = { Text("Paste your key") },
-                    visualTransformation = if (visible) VisualTransformation.None else PasswordVisualTransformation(),
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
-                    trailingIcon = {
-                        KeyFieldIcons(
-                            visible = visible,
-                            onToggle = { visible = !visible },
-                            onPaste = {
-                                clipboardText(context)?.trim()?.takeIf { it.isNotEmpty() }?.let {
-                                    key = it
-                                    pasted = true
-                                }
-                            },
-                        )
-                    },
-                    shape = RoundedCornerShape(14.dp),
-                    modifier = Modifier.fillMaxWidth(),
-                )
-                if (pasted && key.isNotBlank()) {
-                    Spacer(Modifier.height(6.dp))
-                    Text("Pasted from your clipboard", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary)
-                }
-            }
-
-            Step(4, "Save and test") {
-                CheckStatus(check)
-                Spacer(Modifier.height(12.dp))
-                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    SheetButton("Done", filled = false, modifier = Modifier.weight(1f), onClick = close)
-                    SheetButton("Add engine", filled = true, modifier = Modifier.weight(1f)) {
-                        viewModel.addEngine(chosen)
-                        viewModel.saveKey(chosen, key, url)
-                    }
-                }
-            }
-        }
-    }
-}
-
-/** A numbered step in a sheet: the number in a dot, a title, then what the step needs. */
-@Composable
-private fun ColumnScope.Step(number: Int, title: String, content: @Composable ColumnScope.() -> Unit) {
-    Spacer(Modifier.height(14.dp))
-    Row(verticalAlignment = Alignment.CenterVertically) {
-        Box(
-            Modifier
-                .size(26.dp)
-                .clip(CircleShape)
-                .background(MaterialTheme.colorScheme.primary),
-            contentAlignment = Alignment.Center,
-        ) {
-            Text("$number", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onPrimary)
-        }
-        Spacer(Modifier.width(10.dp))
-        Text(title, style = MaterialTheme.typography.titleSmall)
-    }
-    Spacer(Modifier.height(10.dp))
-    content()
-}
-
-/** Opens the page where the service makes its key, in the browser. Nothing for a custom service. */
-@Composable
-private fun GetKeyButton(provider: Provider) {
-    val uriHandler = LocalUriHandler.current
-    val url = provider.keyUrl ?: return
-    SheetButton("Open ${provider.title} to get a key", filled = false, modifier = Modifier.fillMaxWidth()) {
-        uriHandler.openUri(url)
-    }
-    Spacer(Modifier.height(12.dp))
-}
-
-/** The clipboard's text, or null when it holds none. */
-private fun clipboardText(context: Context): String? =
-    context.getSystemService(ClipboardManager::class.java)
-        ?.primaryClip
-        ?.takeIf { it.itemCount > 0 }
-        ?.getItemAt(0)
-        ?.coerceToText(context)
-        ?.toString()
-
-/**
- * When ScaleBit comes back to the front (say, from the key page in the browser), a key on the
- * clipboard that this service issues fills the empty key field by itself. A key already typed is
- * never overwritten.
- */
-@Composable
-private fun PasteKeyOnReturn(provider: Provider, key: String, onPasted: (String) -> Unit) {
-    val context = LocalContext.current
-    val lifecycleOwner = LocalLifecycleOwner.current
-    val currentKey by rememberUpdatedState(key)
-    val paste by rememberUpdatedState(onPasted)
-    // Counts each time ScaleBit comes back to the front, say from the key page in the browser.
-    var resumes by remember { mutableIntStateOf(0) }
-    DisposableEffect(lifecycleOwner) {
-        val observer = LifecycleEventObserver { _, event ->
-            if (event == Lifecycle.Event.ON_RESUME) resumes++
-        }
-        lifecycleOwner.lifecycle.addObserver(observer)
-        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
-    }
-    // Once when the sheet opens, then after each return. The short wait lets the window get focus first.
-    LaunchedEffect(provider, resumes) {
-        delay(300)
-        if (currentKey.isNotBlank()) return@LaunchedEffect
-        clipboardText(context)?.trim()?.takeIf { provider.looksLikeKey(it) }?.let(paste)
-    }
-}
-
-/** The key field's icons: paste the clipboard's key, and show or hide the key. */
-@Composable
-private fun KeyFieldIcons(visible: Boolean, onToggle: () -> Unit, onPaste: () -> Unit) {
-    Row {
-        IconButton(onClick = onPaste) {
-            Icon(Icons.Rounded.ContentPaste, "Paste key from clipboard")
-        }
-        IconButton(onClick = onToggle) {
-            Icon(if (visible) Icons.Rounded.VisibilityOff else Icons.Rounded.Visibility, if (visible) "Hide key" else "Show key")
-        }
-    }
-}
-
-@Composable
-private fun CheckStatus(check: KeyCheck) {
-    when (check) {
-        KeyCheck.Idle -> Unit
-        KeyCheck.Checking -> Row(verticalAlignment = Alignment.CenterVertically) {
-            CircularProgressIndicator(Modifier.size(16.dp), strokeWidth = 2.dp)
-            Spacer(Modifier.width(8.dp))
-            Text("Checking…", style = MaterialTheme.typography.bodyMedium)
-        }
-        is KeyCheck.Ok -> Row(verticalAlignment = Alignment.CenterVertically) {
-            Icon(Icons.Rounded.Check, null, Modifier.size(18.dp), tint = MaterialTheme.colorScheme.primary)
-            Spacer(Modifier.width(6.dp))
-            Text("Key works · ${check.models.size} models available", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.primary)
-        }
-        is KeyCheck.Failed -> Text(check.message, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.error)
-    }
-}
-
-@Composable
-private fun ModelSheet(provider: Provider, selected: String, viewModel: SettingsViewModel, onDismiss: () -> Unit) {
-    val check by viewModel.keyCheck.collectAsStateWithLifecycle()
-    var typed by remember { mutableStateOf(selected) }
-    LaunchedEffect(provider) { viewModel.loadModels(provider) }
-    Sheet(
-        title = "${provider.title} model",
-        subtitle = when (provider) {
-            Provider.DEEPSEEK -> "Pick a model that accepts images. Automatic prefers deepseek-flash (V4.1 Flash)."
-            Provider.GEMINI -> "Flash models are fast and on the free tier."
-            Provider.OPENAI -> "Automatic picks a recent mini model: fast, cheap and able to read photos."
-            Provider.ANTHROPIC -> "Automatic picks a Haiku model: fast, cheap and able to read photos."
-            Provider.OPENROUTER -> "Only models that can read photos are listed. Free ones cost nothing but have daily limits and can be busy."
-            Provider.CUSTOM -> "Name a model that can read images, exactly as the service spells it."
-        },
-        onDismiss = onDismiss,
-        scrollable = false,
-    ) { close ->
-        val ok = check as? KeyCheck.Ok
-        val models = ok?.models.orEmpty()
-        val canFilterFree = provider == Provider.OPENROUTER
-        var query by remember { mutableStateOf("") }
-        var freeOnly by remember { mutableStateOf(false) }
-        // Long lists (OpenRouter has hundreds) get a search box, and OpenRouter a Free filter.
-        if (models.size > 12 || canFilterFree) {
-            OutlinedTextField(
-                value = query,
-                onValueChange = { query = it },
-                singleLine = true,
-                placeholder = { Text("Search ${models.size} models") },
-                leadingIcon = { Icon(Icons.Rounded.Search, null) },
-                trailingIcon = {
-                    if (query.isNotEmpty()) IconButton(onClick = { query = "" }) { Icon(Icons.Rounded.Close, "Clear search") }
-                },
-                shape = RoundedCornerShape(14.dp),
-                modifier = Modifier.fillMaxWidth(),
-            )
-            if (canFilterFree) {
-                Spacer(Modifier.height(10.dp))
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    FilterChipButton("All", selected = !freeOnly) { freeOnly = false }
-                    FilterChipButton("Free only · ${models.count(OpenRouterModels::isFree)}", selected = freeOnly) { freeOnly = true }
-                }
-            }
-            Spacer(Modifier.height(8.dp))
-        }
-        val words = query.trim().lowercase().split(' ').filter { it.isNotEmpty() }
-        val shown = models.filter { m ->
-            (!freeOnly || OpenRouterModels.isFree(m)) && words.all { it in m.lowercase() }
-        }
-        // The only thing that scrolls in this sheet; it gives up room when the keyboard is open.
-        LazyColumn(
-            Modifier
-                .weight(1f, fill = false)
-                .heightIn(max = 420.dp),
-        ) {
-            if (provider != Provider.CUSTOM && words.isEmpty() && !freeOnly) {
-                item {
-                    Option(ok?.automatic?.let { "Automatic ($it)" } ?: "Automatic", "Picks a good model for you", selected = selected.isBlank()) {
-                        viewModel.setModel(provider, "")
-                        close()
-                    }
-                }
-            }
-            items(shown, key = { it }) { model ->
-                Option(model, selected = model == selected, badge = if (canFilterFree && OpenRouterModels.isFree(model)) "Free" else null) {
-                    viewModel.setModel(provider, model)
-                    close()
-                }
-            }
-            if (ok != null && shown.isEmpty()) {
-                item {
-                    Text(
-                        if (freeOnly) "No free models match." else "No models match.",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(vertical = 12.dp),
-                    )
-                }
-            }
-        }
-        if (check !is KeyCheck.Ok) {
-            Spacer(Modifier.height(8.dp))
-            CheckStatus(check)
-        }
-        Spacer(Modifier.height(12.dp))
-        OutlinedTextField(
-            value = typed,
-            onValueChange = { typed = it },
-            singleLine = true,
-            label = { Text("Or type a model name") },
-            shape = RoundedCornerShape(14.dp),
-            modifier = Modifier.fillMaxWidth(),
-        )
-        if (typed.isNotBlank() && typed != selected) {
-            Spacer(Modifier.height(12.dp))
-            SheetButton("Use this name", filled = true, modifier = Modifier.fillMaxWidth()) {
-                viewModel.setModel(provider, typed)
-                close()
-            }
-        }
-    }
-}
-
-/** A small pill toggle, filled with the accent colour when on. */
-@Composable
-private fun FilterChipButton(label: String, selected: Boolean, onClick: () -> Unit) {
-    val haptics = rememberHaptics()
-    Surface(
-        onClick = {
-            haptics.tick()
-            onClick()
-        },
-        shape = RoundedCornerShape(50),
-        color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceContainerHighest,
-        contentColor = if (selected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface,
-    ) {
-        Text(label, style = MaterialTheme.typography.labelLarge, modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp))
     }
 }

@@ -100,7 +100,9 @@ import app.morsel.ui.settings.AiSettingsScreen
 import app.morsel.ui.settings.SettingsScreen
 import app.morsel.ui.settings.SettingsViewModel
 import app.morsel.ui.theme.MorselTheme
+import app.morsel.ui.coach.CoachGate
 import app.morsel.ui.update.UpdatePrompt
+import androidx.compose.runtime.DisposableEffect
 import kotlinx.coroutines.flow.first
 import kotlinx.serialization.Serializable
 
@@ -118,7 +120,7 @@ class MainActivity : ComponentActivity() {
     /** On the Scan screen either volume key snaps and analyzes; anywhere else they change the volume. */
     override fun onKeyDown(keyCode: Int, event: KeyEvent): Boolean {
         val shutter = HardwareShutter.onPress
-        if (shutter != null && (keyCode == KeyEvent.KEYCODE_VOLUME_UP || keyCode == KeyEvent.KEYCODE_VOLUME_DOWN)) {
+        if (shutter != null && !CoachGate.open && (keyCode == KeyEvent.KEYCODE_VOLUME_UP || keyCode == KeyEvent.KEYCODE_VOLUME_DOWN)) {
             if (event.repeatCount == 0) shutter() // holding the key doesn't fire again
             return true
         }
@@ -195,6 +197,10 @@ private fun MorselNavHost(container: AppContainer, start: Any) {
     var coachOpen by rememberSaveable { mutableStateOf(false) }
     val coachHere = onToday || onScan || destination?.hasRoute<BodyRoute>() == true || destination?.hasRoute<ResultRoute>() == true
     LaunchedEffect(coachOn) { if (!coachOn) coachOpen = false }
+    DisposableEffect(coachOpen) {
+        CoachGate.open = coachOpen
+        onDispose { CoachGate.open = false }
+    }
     val pull = rememberCoachPull()
     val haptics = rememberHaptics()
     val scope = rememberCoroutineScope()
@@ -320,8 +326,10 @@ private fun MorselNavHost(container: AppContainer, start: Any) {
                     val route = backStack.toRoute<OnboardingRoute>()
                     Screen {
                         val vm = viewModel { OnboardingViewModel(container, route.edit) }
+                        val engines = viewModel { SettingsViewModel(container) }
                         OnboardingScreen(
                             viewModel = vm,
+                            engines = engines,
                             onDone = {
                                 if (route.edit) {
                                     nav.popBackStack()

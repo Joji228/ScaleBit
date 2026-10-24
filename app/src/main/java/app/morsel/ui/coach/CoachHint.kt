@@ -1,5 +1,7 @@
 package app.morsel.ui.coach
 
+import androidx.compose.ui.res.stringResource
+import app.morsel.R
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.LinearEasing
@@ -125,15 +127,15 @@ fun CoachHint(onSkip: () -> Unit, modifier: Modifier = Modifier) {
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(6.dp),
             ) {
-                Text("Pull down and hold", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurface)
+                Text(stringResource(R.string.pull_down_and_hold), style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurface)
                 Text(
-                    "Drag down anywhere on the screen, hold for a moment, and your coach pops in. Try it now.",
+                    stringResource(R.string.drag_down_anywhere_on_the_screen),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     textAlign = TextAlign.Center,
                 )
                 Spacer(Modifier.height(2.dp))
-                TextButton(onClick = onSkip) { Text("Skip") }
+                TextButton(onClick = onSkip) { Text(stringResource(R.string.skip)) }
             }
         }
     }

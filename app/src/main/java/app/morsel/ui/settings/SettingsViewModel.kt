@@ -24,6 +24,7 @@ import app.morsel.domain.UserProfile
 import app.morsel.ui.theme.AccentColor
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -136,6 +137,11 @@ class SettingsViewModel(private val app: AppContainer) : ViewModel() {
     val message = MutableStateFlow<String?>(null)
 
     /** The Settings → Updates row: checking, offering a version, downloading, or ready to install. */
+    /** Greek foods and brands tuning, on by default. */
+    val greekTuning: Flow<Boolean> = app.settings.regionGreece
+
+    fun setGreekTuning(on: Boolean) = viewModelScope.launch { app.settings.setRegionGreece(on) }
+
     val updates: StateFlow<UpdateState> = app.updater.state
 
     val updater: AppUpdater = app.updater

@@ -50,6 +50,9 @@ class MorselRepository(
 
     suspend fun meal(id: Long) = db.meals().get(id)
 
+    /** Food lines logged since [since], newest first, for the Add food box's recent foods. */
+    suspend fun recentFoodItems(since: LocalDate): List<FoodItemEntity> = db.meals().itemsSince(since.toString())
+
     suspend fun saveMeal(meal: MealEntity, items: List<FoodItemEntity>): Long = db.withTransaction {
         val id = if (meal.id == 0L) {
             db.meals().insert(meal)

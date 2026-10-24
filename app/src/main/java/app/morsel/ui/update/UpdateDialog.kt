@@ -1,5 +1,7 @@
 package app.morsel.ui.update
 
+import androidx.compose.ui.res.stringResource
+import app.morsel.R
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -86,9 +88,9 @@ fun UpdateDialog(updater: AppUpdater, state: UpdateState, onDismiss: () -> Unit)
                     }
                 },
                 confirmButton = {
-                    Button(onClick = { scope.launch { updater.download() } }) { Text("Download") }
+                    Button(onClick = { scope.launch { updater.download() } }) { Text(stringResource(R.string.download)) }
                 },
-                dismissButton = { TextButton(onClick = onDismiss) { Text("Not now") } },
+                dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.not_now)) } },
             )
         }
 
@@ -105,7 +107,7 @@ fun UpdateDialog(updater: AppUpdater, state: UpdateState, onDismiss: () -> Unit)
                     }
                 },
                 confirmButton = {},
-                dismissButton = { TextButton(onClick = onDismiss) { Text("Hide") } },
+                dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.hide)) } },
             )
         }
 
@@ -117,7 +119,7 @@ fun UpdateDialog(updater: AppUpdater, state: UpdateState, onDismiss: () -> Unit)
                 text = {
                     Column {
                         Text(
-                            "Android asks you to confirm once. Your meals, settings and API keys stay.",
+                            stringResource(R.string.android_asks_you_to_confirm_once),
                             style = MaterialTheme.typography.bodyMedium,
                         )
                         refusal?.let {
@@ -127,9 +129,9 @@ fun UpdateDialog(updater: AppUpdater, state: UpdateState, onDismiss: () -> Unit)
                     }
                 },
                 confirmButton = {
-                    Button(onClick = { installNow(state.file) }) { Text("Install") }
+                    Button(onClick = { installNow(state.file) }) { Text(stringResource(R.string.install)) }
                 },
-                dismissButton = { TextButton(onClick = onDismiss) { Text("Later") } },
+                dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.later)) } },
             )
         }
 
@@ -137,12 +139,12 @@ fun UpdateDialog(updater: AppUpdater, state: UpdateState, onDismiss: () -> Unit)
             AlertDialog(
                 onDismissRequest = onDismiss,
                 containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-                title = { Text("The update didn't finish") },
+                title = { Text(stringResource(R.string.the_update_didn_t_finish)) },
                 text = { Text(state.message, style = MaterialTheme.typography.bodyMedium) },
                 confirmButton = {
-                    Button(onClick = { scope.launch { updater.check() } }) { Text("Try again") }
+                    Button(onClick = { scope.launch { updater.check() } }) { Text(stringResource(R.string.try_again)) }
                 },
-                dismissButton = { TextButton(onClick = onDismiss) { Text("Close") } },
+                dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.close)) } },
             )
         }
 
@@ -150,9 +152,9 @@ fun UpdateDialog(updater: AppUpdater, state: UpdateState, onDismiss: () -> Unit)
             AlertDialog(
                 onDismissRequest = onDismiss,
                 containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-                title = { Text("ScaleBit is up to date") },
+                title = { Text(stringResource(R.string.scalebit_is_up_to_date)) },
                 text = { Text("Version ${updater.installedVersion} is the latest.", style = MaterialTheme.typography.bodyMedium) },
-                confirmButton = { TextButton(onClick = onDismiss) { Text("OK") } },
+                confirmButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.ok)) } },
             )
         }
     }
