@@ -22,6 +22,8 @@ suspend fun AnalysisResult.enrichFromFoodFacts(foodFacts: OpenFoodFacts): Analys
     val items = meal.items.map { item ->
         val fact = matches[item.product.trim()] ?: return@map item
         item.copy(
+            grams = fact.packageGrams ?: item.grams,
+            packageGrams = fact.packageGrams,
             kcalPer100 = fact.kcalPer100,
             proteinPer100 = fact.proteinPer100,
             carbsPer100 = fact.carbsPer100,

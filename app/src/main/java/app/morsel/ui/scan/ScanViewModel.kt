@@ -108,7 +108,8 @@ class ScanViewModel(private val app: AppContainer) : ViewModel() {
         val items = facts.map {
             AiItem(
                 name = it.label,
-                grams = it.servingGrams ?: 100.0,
+                grams = it.packageGrams ?: it.servingGrams ?: 100.0,
+                packageGrams = it.packageGrams,
                 kcalPer100 = it.kcalPer100,
                 proteinPer100 = it.proteinPer100,
                 carbsPer100 = it.carbsPer100,

@@ -56,6 +56,8 @@ data class AiItem(
     val product: String = "",
     /** Set by ScaleBit when the numbers came from Open Food Facts: the product it matched. */
     val foodFacts: String? = null,
+    /** The whole package in grams when Open Food Facts knows it; a matched product is taken as the whole package. */
+    val packageGrams: Double? = null,
 )
 
 @Serializable

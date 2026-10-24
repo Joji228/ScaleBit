@@ -46,6 +46,8 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.automirrored.rounded.Send
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import kotlinx.coroutines.launch
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -440,6 +442,8 @@ private fun DescribeFood(
     onLogged: () -> Unit,
 ) {
     val scope = rememberCoroutineScope()
+    val focusManager = LocalFocusManager.current
+    val keyboard = LocalSoftwareKeyboardController.current
     var text by remember { mutableStateOf("") }
     var busy by remember { mutableStateOf(false) }
     var problem by remember { mutableStateOf<String?>(null) }
@@ -454,6 +458,8 @@ private fun DescribeFood(
     LaunchedEffect(recent) { recents = recent?.invoke() ?: emptyList() }
 
     fun estimate() {
+        focusManager.clearFocus()
+        keyboard?.hide()
         val description = text.trim()
         if (description.isEmpty() || busy) return
         busy = true
@@ -527,6 +533,7 @@ private fun DescribeFood(
         Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
             lines.forEachIndexed { index, line ->
                 key(line.id) {
+                    Column {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Text(
                             line.item.name.ifBlank { "Food" },
@@ -546,6 +553,10 @@ private fun DescribeFood(
                         IconButton(onClick = { lines.removeAt(index) }) {
                             Icon(Icons.Rounded.Close, "Remove ${line.item.name.ifBlank { "food" }}", Modifier.size(18.dp))
                         }
+                    }
+                    GramChips(line.item.grams, line.item.packageGrams) { grams ->
+                        lines[index] = DescribeLine(line.id, line.item.copy(grams = grams))
+                    }
                     }
                 }
             }
@@ -617,4 +628,35 @@ private fun GramsField(grams: Double, onChange: (Double) -> Unit) {
         shape = RoundedCornerShape(12.dp),
         modifier = Modifier.width(120.dp),
     )
+}
+
+/** Quick gram choices for one food: 50, 100, 150 and 200 g, and the whole package when Open Food Facts knows it. */
+@Composable
+private fun GramChips(grams: Double, packageGrams: Double?, onPick: (Double) -> Unit) {
+    val choices = buildList {
+        packageGrams?.let { add(it to "Package ${it.format()} g") }
+        listOf(50.0, 100.0, 150.0, 200.0).forEach { add(it to "${it.format()} g") }
+    }
+    Row(
+        Modifier
+            .horizontalScroll(rememberScrollState())
+            .padding(top = 4.dp),
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
+    ) {
+        choices.forEach { (value, label) ->
+            val selected = kotlin.math.abs(grams - value) < 0.5
+            Surface(
+                onClick = { onPick(value) },
+                shape = RoundedCornerShape(50),
+                color = if (selected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceContainerHighest,
+            ) {
+                Text(
+                    label,
+                    style = MaterialTheme.typography.labelMedium,
+                    maxLines = 1,
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                )
+            }
+        }
+    }
 }

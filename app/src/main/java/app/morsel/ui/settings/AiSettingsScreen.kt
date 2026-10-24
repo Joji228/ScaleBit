@@ -121,7 +121,6 @@ import app.morsel.data.ThinkingLevel
 import app.morsel.data.TokenBudget
 import app.morsel.data.TokenUsage
 import app.morsel.ui.components.PillSelector
-import androidx.compose.material3.LinearProgressIndicator
 import app.morsel.ui.components.Pill
 import app.morsel.ui.components.RoundIconButton
 import app.morsel.ui.components.rememberHaptics
@@ -591,21 +590,54 @@ private fun SettingRow(icon: ImageVector, title: String, value: String?, onClick
     }
 }
 
-/** The token limits: what the engines have used today and in the last 7 days, and the caps the user picks. */
+/**
+ * The token limits as one compact row. Tapping it opens the day and week choices and today's use,
+ * so the AI engine screen stays short.
+ */
 @Composable
 private fun UsageCard(viewModel: SettingsViewModel) {
     val usage by viewModel.usage.collectAsStateWithLifecycle(initialValue = TokenUsage(0, 0, 0, 0))
-    Surface(shape = RoundedCornerShape(22.dp), color = MaterialTheme.colorScheme.surfaceContainer, modifier = Modifier.fillMaxWidth()) {
-        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            Text("Token limit", style = MaterialTheme.typography.titleSmall)
+    var open by remember { mutableStateOf(false) }
+    Surface(
+        onClick = { open = true },
+        shape = RoundedCornerShape(22.dp),
+        color = MaterialTheme.colorScheme.surfaceContainer,
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        Row(
+            Modifier.padding(horizontal = 18.dp, vertical = 16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Column(Modifier.weight(1f)) {
+                Text("Token limit", style = MaterialTheme.typography.bodyLarge)
+                Text(
+                    "Day: ${TokenBudget.label(usage.daily)} · Week: ${TokenBudget.label(usage.weekly)}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            Icon(Icons.AutoMirrored.Rounded.KeyboardArrowRight, null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+    }
+    if (open) {
+        Sheet(
+            title = "Token limit",
+            subtitle = "Caps how much the AI engines can use. Counted in tokens, as each engine reports them.",
+            onDismiss = { open = false },
+        ) {
             UsageLine("Today", usage.today, usage.daily)
             UsageLine("Last 7 days", usage.week, usage.weekly)
+            Spacer(Modifier.height(14.dp))
             Text("Per day", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Spacer(Modifier.height(6.dp))
             PillSelector(TokenBudget.dailyChoices, usage.daily, { TokenBudget.label(it) }, { viewModel.setDailyLimit(it) })
+            Spacer(Modifier.height(14.dp))
             Text("Per week", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Spacer(Modifier.height(6.dp))
             PillSelector(TokenBudget.weeklyChoices, usage.weekly, { TokenBudget.label(it) }, { viewModel.setWeeklyLimit(it) })
+            Spacer(Modifier.height(14.dp))
             Text(
-                "Counts the tokens each engine reports back. A reply that starts under the limit can finish a little over it.",
+                "A reply that starts under the limit can finish a little over it.",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -621,8 +653,27 @@ private fun UsageLine(label: String, used: Long, limit: Long) {
             else "$label: ${TokenBudget.grouped(used)} tokens",
             style = MaterialTheme.typography.bodyMedium,
         )
-        if (limit > 0) {
-            LinearProgressIndicator(progress = { (used.toFloat() / limit).coerceIn(0f, 1f) }, modifier = Modifier.fillMaxWidth())
-        }
+        if (limit > 0) UsageBar((used.toFloat() / limit).coerceIn(0f, 1f))
+    }
+}
+
+/** A thin bar showing how much of a limit is used. No end dot. */
+@Composable
+private fun UsageBar(fraction: Float) {
+    Box(
+        Modifier
+            .fillMaxWidth()
+            .padding(top = 6.dp)
+            .height(6.dp)
+            .clip(RoundedCornerShape(3.dp))
+            .background(MaterialTheme.colorScheme.surfaceContainerHighest),
+    ) {
+        Box(
+            Modifier
+                .fillMaxWidth(fraction)
+                .height(6.dp)
+                .clip(RoundedCornerShape(3.dp))
+                .background(MaterialTheme.colorScheme.primary),
+        )
     }
 }
