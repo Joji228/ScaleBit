@@ -85,10 +85,14 @@ class MorselRepository(
         id
     }
 
-    suspend fun deleteMeal(id: Long) {
+    /**
+     * [keepPhoto] leaves the photo file in place so an undo can bring the meal back with it; if
+     * nothing does, the photo is removed with the other unused ones on the next launch (see [prunePhotos]).
+     */
+    suspend fun deleteMeal(id: Long, keepPhoto: Boolean = false) {
         val photo = db.meals().get(id)?.meal?.photoPath
         db.meals().delete(id)
-        photo?.takeIf(::isMealPhoto)?.let { File(it).delete() }
+        if (!keepPhoto) photo?.takeIf(::isMealPhoto)?.let { File(it).delete() }
     }
 
     /**

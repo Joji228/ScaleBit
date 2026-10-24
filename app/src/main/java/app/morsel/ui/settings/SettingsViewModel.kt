@@ -139,8 +139,7 @@ class SettingsViewModel(private val app: AppContainer) : ViewModel() {
     val keyCheck = MutableStateFlow<KeyCheck>(KeyCheck.Idle)
     val message = MutableStateFlow<String?>(null)
 
-    /** The Settings → Updates row: checking, offering a version, downloading, or ready to install. */
-    /** Tokens used today and in the last 7 days, with the limits chosen. */
+    /** Tokens used today and since Sunday 9:00, with the limits chosen. */
     val usage: Flow<TokenUsage> = combine(app.settings.aiUsageLog, app.settings.aiDailyLimit, app.settings.aiWeeklyLimit) { log, daily, weekly ->
         TokenBudget.summary(TokenBudget.parse(log), daily, weekly, System.currentTimeMillis(), ZoneId.systemDefault())
     }
@@ -154,6 +153,7 @@ class SettingsViewModel(private val app: AppContainer) : ViewModel() {
 
     fun setGreekTuning(on: Boolean) = viewModelScope.launch { app.settings.setRegionGreece(on) }
 
+    /** The Settings → Updates row: checking, offering a version, downloading, or ready to install. */
     val updates: StateFlow<UpdateState> = app.updater.state
 
     val updater: AppUpdater = app.updater

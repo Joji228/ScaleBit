@@ -70,11 +70,6 @@ class OpenFoodFacts(version: String, client: OkHttpClient) {
         return (if (AppRegion.greekTuning) FoodFactsParser.localFirst(parsed) else parsed).take(size)
     }
 
-    /**
-     * The best match for a product the AI named in a photo ("Oreo Original"), or null when
-     * nothing close enough is found. Every word of the AI's name has to appear in the product's
-     * name or brand, so a guess never swaps in an unrelated product.
-     */
     /** The product with this barcode, or null when Open Food Facts doesn't have it (or lacks its nutrition). */
     suspend fun product(barcode: String): FoodFact? {
         val url = "https://world.openfoodfacts.org/api/v2/product/$barcode.json".toHttpUrl().newBuilder()
@@ -83,13 +78,22 @@ class OpenFoodFacts(version: String, client: OkHttpClient) {
         val request = Request.Builder().url(url).header("User-Agent", userAgent).build()
         val body = try {
             http.newCall(request).await()
-        } catch (e: IOException) {
-            if (e.message?.contains("404") == true) return null else throw e
+        } catch (e: StatusException) {
+            // Open Food Facts answers an unknown barcode with 404.
+            if (e.code == 404) return null else throw e
         }
         return FoodFactsParser.parseProduct(body, barcode)
     }
 
+    /**
+     * The best match for a product the AI named in a photo ("Oreo Original"), or null when
+     * nothing close enough is found. Every word of the AI's name has to appear in the product's
+     * name or brand, so a guess never swaps in an unrelated product.
+     */
     suspend fun match(product: String): FoodFact? = FoodFactsParser.bestMatch(product, search(product, size = 5))
+
+    /** An answer other than 2xx, with its status code. */
+    private class StatusException(val code: Int) : IOException("Open Food Facts answered $code")
 
     private suspend fun Call.await(): String = suspendCancellableCoroutine { cont ->
         cont.invokeOnCancellation { cancel() }
@@ -100,7 +104,7 @@ class OpenFoodFacts(version: String, client: OkHttpClient) {
 
             override fun onResponse(call: Call, response: Response) {
                 response.use {
-                    if (!it.isSuccessful) cont.resumeWithException(IOException("Open Food Facts answered ${it.code}"))
+                    if (!it.isSuccessful) cont.resumeWithException(StatusException(it.code))
                     else cont.resume(it.body.string())
                 }
             }

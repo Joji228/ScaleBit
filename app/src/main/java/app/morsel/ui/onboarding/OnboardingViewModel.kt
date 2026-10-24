@@ -6,6 +6,7 @@ import app.morsel.AppContainer
 import app.morsel.domain.Nutrition
 import app.morsel.domain.Targets
 import app.morsel.domain.UserProfile
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.first
@@ -18,6 +19,8 @@ enum class Step { WELCOME, BASICS, WEIGHT, ACTIVITY, PACE, PLAN, ENGINE }
 data class OnboardingState(
     val loaded: Boolean = false,
     val edit: Boolean = false,
+    /** Why saving the profile didn't work; shown until dismissed. */
+    val error: String? = null,
     val step: Step = Step.WELCOME,
     val profile: UserProfile = UserProfile(),
     val currentWeight: Double = UserProfile().startWeightKg,
@@ -75,12 +78,21 @@ class OnboardingViewModel(private val app: AppContainer, edit: Boolean) : ViewMo
     fun finish(onDone: () -> Unit) {
         val s = _state.value
         viewModelScope.launch {
-            val profile = if (s.edit) s.profile else s.profile.copy(startWeightKg = s.currentWeight)
-            app.settings.saveProfile(profile)
-            if (savedWeight == null || abs((savedWeight ?: 0.0) - s.currentWeight) >= 0.05) {
-                app.repository.logWeight(s.currentWeight)
+            try {
+                val profile = if (s.edit) s.profile else s.profile.copy(startWeightKg = s.currentWeight)
+                app.settings.saveProfile(profile)
+                if (savedWeight == null || abs((savedWeight ?: 0.0) - s.currentWeight) >= 0.05) {
+                    app.repository.logWeight(s.currentWeight)
+                }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                _state.update { it.copy(error = "Couldn't save your profile. ${e.message.orEmpty()}".trim()) }
+                return@launch
             }
             onDone()
         }
     }
+
+    fun dismissError() = _state.update { it.copy(error = null) }
 }

@@ -9,6 +9,7 @@ import app.morsel.domain.BodyAnalysis
 import app.morsel.domain.Macros
 import app.morsel.domain.MealType
 import app.morsel.domain.Sex
+import java.time.DayOfWeek
 import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalDateTime
@@ -29,8 +30,14 @@ object CoachContext {
     const val MEAL_DAYS = 90
     const val FOOD_DAYS = 14
 
-    /** About 50k tokens: plenty for years of daily totals plus months of meals. */
-    const val MAX_CHARS = 200_000
+    /**
+     * About 20k tokens. Every question (and every product lookup) sends all of it, so it stays
+     * well under the smaller daily token limits while still fitting years of daily totals.
+     */
+    const val MAX_CHARS = 80_000
+
+    /** Every weigh-in this recent is listed; older ones are thinned to the last of each week. */
+    const val WEIGH_IN_DAYS = 90
 
     private val WINDOWS = listOf(MEAL_DAYS to FOOD_DAYS, 60 to 10, 30 to 7, 14 to 3, 7 to 0, 0 to 0)
 
@@ -50,7 +57,7 @@ object CoachContext {
             header()
             profile(plan)
             daily(logged, water, now.toLocalDate())
-            weighIns(plan, weights, zone)
+            weighIns(plan, weights, now.toLocalDate(), zone)
         }
         // Meals are the part that grows fastest; take the widest window that still fits.
         for ((mealDays, foodDays) in WINDOWS) {
@@ -132,8 +139,8 @@ object CoachContext {
         }
     }
 
-    private fun StringBuilder.weighIns(plan: PlanState, weights: List<WeightEntity>, zone: ZoneId) {
-        append("\n## Weigh-ins, every one (oldest first)\n")
+    private fun StringBuilder.weighIns(plan: PlanState, weights: List<WeightEntity>, today: LocalDate, zone: ZoneId) {
+        append("\n## Weigh-ins (oldest first): every one for the last ").append(WEIGH_IN_DAYS).append(" days, the last of each week before that\n")
         if (weights.isEmpty()) {
             append("None yet.\n")
             return
@@ -143,7 +150,11 @@ object CoachContext {
         append("Body composition comes from a bathroom smart scale: estimates, so trends matter more than one reading. ")
         append("Blank means a manual weigh-in without it.\n")
         append("date time,kg,trend,fat%,fat kg,muscle kg,water%,bone kg,visceral,BMR,body score,body age\n")
-        weights.sortedBy { it.timestamp }.forEach { w ->
+        val recentFrom = today.minusDays(WEIGH_IN_DAYS - 1L)
+        val sorted = weights.sortedBy { it.timestamp }
+        val (older, recent) = sorted.partition { LocalDate.parse(it.date).isBefore(recentFrom) }
+        val weekly = older.groupBy { LocalDate.parse(it.date).with(DayOfWeek.MONDAY) }.values.map { it.last() }
+        (weekly + recent).forEach { w ->
             append(w.date).append(' ').append(time(w.timestamp, zone)).append(',').append(n(w.kg, 1)).append(',')
             trendByDate[LocalDate.parse(w.date)]?.let { append(n(it, 1)) }
             val report = profile?.let { BodyAnalysis.report(w.kg, w.impedance, it) }

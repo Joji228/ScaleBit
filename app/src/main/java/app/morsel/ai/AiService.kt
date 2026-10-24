@@ -129,6 +129,10 @@ class AiService(private val settings: SettingsRepository, client: OkHttpClient) 
         .connectTimeout(20, TimeUnit.SECONDS)
         .writeTimeout(60, TimeUnit.SECONDS)
         .readTimeout(150, TimeUnit.SECONDS)
+        // A redirect would send the key and photos somewhere UrlPolicy never checked (even to
+        // plain http on the internet), so an engine has to answer at the address it was given.
+        .followRedirects(false)
+        .followSslRedirects(false)
         .build()
     private val json = Json { ignoreUnknownKeys = true; isLenient = true; coerceInputValues = true }
     private val jsonMedia = "application/json".toMediaType()
@@ -250,7 +254,6 @@ class AiService(private val settings: SettingsRepository, client: OkHttpClient) 
         text.trim().ifBlank { throw AiException("${provider.title} returned no answer") }
     }
 
-    /** Lists models the key can use. Doubles as a key check. */
     /**
      * How much credit is left on this engine's account, or null when the service can't say
      * (see [ApiBalances.supported]). Throws with a readable message when the check fails.
@@ -271,6 +274,7 @@ class AiService(private val settings: SettingsRepository, client: OkHttpClient) 
         } ?: throw AiException("${provider.title} didn't say how much credit is left")
     }
 
+    /** Lists models the key can use. Doubles as a key check. */
     suspend fun listModels(provider: Provider, key: String, baseUrl: String): List<String> = withContext(Dispatchers.IO) {
         if (provider.needsBaseUrl) UrlPolicy.problem(baseUrl)?.let { throw AiException(it) }
         when (provider.kind) {
@@ -356,7 +360,7 @@ class AiService(private val settings: SettingsRepository, client: OkHttpClient) 
     }
 
     /** Automatic picks are cached for this session only, so newer models are picked up later. */
-    private val autoModels = mutableMapOf<Provider, String>()
+    private val autoModels = java.util.concurrent.ConcurrentHashMap<Provider, String>()
 
     private suspend fun resolveModel(provider: Provider, ai: AiSettings): String {
         ai.modelFor(provider).takeIf { it.isNotBlank() }?.let { return it }

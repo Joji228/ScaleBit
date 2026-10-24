@@ -16,7 +16,9 @@ import app.morsel.data.EntryTime
 import app.morsel.data.FoodSource
 import app.morsel.data.FoodFact
 import app.morsel.domain.Macros
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
@@ -68,6 +70,19 @@ class DashboardViewModel(private val app: AppContainer) : ViewModel() {
         }
     }.flowOn(Dispatchers.Default).stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), DashboardState())
 
+    /** A write that didn't work, for the snackbar: a full disk or a database error shouldn't crash the app. */
+    val problems = MutableSharedFlow<String>(extraBufferCapacity = 1)
+
+    private fun write(block: suspend () -> Unit) = viewModelScope.launch {
+        try {
+            block()
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            problems.tryEmit("Couldn't save that. ${e.message.orEmpty()}".trim())
+        }
+    }
+
     fun previousDay() {
         date.value = date.value.minusDays(1)
     }
@@ -77,16 +92,16 @@ class DashboardViewModel(private val app: AppContainer) : ViewModel() {
     }
 
     fun addWater(ml: Int) {
-        viewModelScope.launch { app.repository.addWater(date.value, ml) }
+        write { app.repository.addWater(date.value, ml) }
     }
 
     fun undoWater() {
-        viewModelScope.launch { app.repository.undoWater(date.value) }
+        write { app.repository.undoWater(date.value) }
     }
 
     /** A typed-in weigh-in for [date], the day being viewed. The smart scale only ever logs today. */
     fun logWeight(kg: Double, date: LocalDate) {
-        viewModelScope.launch {
+        write {
             val today = app.clock.today.value
             if (date == today) app.repository.logWeight(kg) else app.repository.logWeight(kg, date, EntryTime.stamp(date, EntryTime.WEIGH_IN, today))
         }
@@ -112,7 +127,7 @@ class DashboardViewModel(private val app: AppContainer) : ViewModel() {
      * [aiSource] is null when the foods came from recent foods only.
      */
     fun logDescribed(name: String, items: List<AiItem>, type: MealType, date: LocalDate, aiSource: String?, notes: String?) {
-        viewModelScope.launch {
+        write {
             app.repository.saveMeal(
                 MealEntity(
                     date = date.toString(),
@@ -156,16 +171,23 @@ class DashboardViewModel(private val app: AppContainer) : ViewModel() {
 
     /** Deletes a meal and hands it back, so the undo in the snackbar can put it back. */
     suspend fun removeMeal(id: Long): MealWithItems? {
-        val meal = app.repository.meal(id)
-        app.repository.deleteMeal(id)
-        return meal
+        return try {
+            val meal = app.repository.meal(id)
+            app.repository.deleteMeal(id, keepPhoto = true)
+            meal
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            problems.tryEmit("Couldn't delete the meal. ${e.message.orEmpty()}".trim())
+            null
+        }
     }
 
-    /** Puts back a meal removed by [removeMeal]. Its photo, if it had one, is not restored. */
+    /** Puts back a meal removed by [removeMeal], photo included. */
     fun restoreMeal(meal: MealWithItems) {
-        viewModelScope.launch {
+        write {
             app.repository.saveMeal(
-                meal.meal.copy(id = 0, photoPath = null),
+                meal.meal.copy(id = 0, photoPath = meal.meal.photoPath?.takeIf { java.io.File(it).exists() }),
                 meal.items.map { it.copy(id = 0, mealId = 0) },
             )
         }
@@ -199,7 +221,7 @@ class DashboardViewModel(private val app: AppContainer) : ViewModel() {
     }
 
     private fun logMeal(date: LocalDate, type: MealType, name: String, source: String, item: FoodItemEntity) {
-        viewModelScope.launch {
+        write {
             app.repository.saveMeal(
                 MealEntity(
                     date = date.toString(),
@@ -216,6 +238,6 @@ class DashboardViewModel(private val app: AppContainer) : ViewModel() {
     }
 
     fun deleteWeight(id: Long) {
-        viewModelScope.launch { app.repository.deleteWeight(id) }
+        write { app.repository.deleteWeight(id) }
     }
 }

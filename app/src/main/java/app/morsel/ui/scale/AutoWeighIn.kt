@@ -66,9 +66,12 @@ import app.morsel.domain.BodyCompositionCalc
 import app.morsel.ui.components.ProgressLine
 import app.morsel.ui.components.RoundIconButton
 import app.morsel.ui.theme.Numeric
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch
 import java.util.Locale
 import kotlin.math.cos
@@ -86,6 +89,7 @@ private enum class Stage { WEIGHING, MEASURING, DONE }
  * A weigh-in more than 5 kg from your latest one might be someone else on your scale, so that one
  * is checked with you before it's saved.
  */
+@OptIn(ExperimentalCoroutinesApi::class)
 @Composable
 fun AutoWeighIn(container: AppContainer, onOpenBody: () -> Unit) {
     val enabled by container.settings.scaleEnabled.collectAsStateWithLifecycle(initialValue = false)
@@ -97,10 +101,13 @@ fun AutoWeighIn(container: AppContainer, onOpenBody: () -> Unit) {
     var dismissed by remember { mutableStateOf(false) }
     var lastFrameAt by remember { mutableLongStateOf(0L) }
     var askAbout by remember { mutableStateOf<WeighInDetector.Event.Done?>(null) }
+    // Scans in battery-friendly bursts until the scale is heard, then continuously while it's in use.
+    val fastScan = remember { MutableStateFlow(false) }
 
     fun close() {
         kg = null
         stage = Stage.WEIGHING
+        fastScan.value = false
     }
 
     fun save(done: WeighInDetector.Event.Done) = scope.launch {
@@ -147,12 +154,13 @@ fun AutoWeighIn(container: AppContainer, onOpenBody: () -> Unit) {
                 // No permission or Bluetooth off just means nothing is heard; try again in a bit,
                 // so turning Bluetooth on while the app is open starts working without a restart.
                 if (container.scale.permissionGranted && container.scale.bluetoothOn) {
-                    container.scale.readings()
+                    fastScan.flatMapLatest { fast -> container.scale.readings(fast) }
                         .catch { }
                         .collect { reading ->
                             val now = System.currentTimeMillis()
                             when (val event = detector.onReading(reading, now)) {
                                 is WeighInDetector.Event.Weighing -> if (stage != Stage.DONE) {
+                                    fastScan.value = true
                                     lastFrameAt = now
                                     kg = event.kg
                                     stage = if (event.settled) Stage.MEASURING else Stage.WEIGHING

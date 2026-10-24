@@ -15,7 +15,7 @@ data class TokenUsage(val today: Long, val week: Long, val daily: Long, val week
 /**
  * Token limits for AI calls. Each engine reports how many tokens a reply used; those are logged,
  * and a request is refused once the day's or the week's limit is used up. The day is the local
- * calendar day; the week is the last seven days.
+ * calendar day; the week runs from Sunday 9:00 (see [weekStart]).
  */
 object TokenBudget {
     /** The choices in Settings. 0 means no limit. */

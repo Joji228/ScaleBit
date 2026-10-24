@@ -65,8 +65,9 @@ class CoachViewModel(private val app: AppContainer) : ViewModel() {
         viewModelScope.launch {
             messages.value = app.coach.load()
             loaded.value = true
-            // Left mid-question last time (the app was closed before the answer came): ask again.
-            if (messages.value.lastOrNull()?.fromUser == true) ask()
+            // Left mid-question last time (the app was closed before the answer came). Asking again
+            // by itself would spend tokens every launch after a failure, so offer Retry instead.
+            if (messages.value.lastOrNull()?.fromUser == true) error.value = "This question wasn't answered. Tap Retry to ask again."
         }
     }
 

@@ -32,9 +32,13 @@ class MiScaleScanner(private val context: Context) {
     /**
      * Every usable frame the scale broadcasts, for as long as the flow is collected. Scanning stops
      * when collection stops. Throws [SecurityException] if the Bluetooth permission is missing.
+     *
+     * [fast] scans continuously, for following a weigh-in in progress; otherwise the radio scans
+     * in bursts, which still catches someone stepping on within a second or two at a fraction of
+     * the battery.
      */
     @SuppressLint("MissingPermission")
-    fun readings(): Flow<MiScaleReading> = callbackFlow {
+    fun readings(fast: Boolean = false): Flow<MiScaleReading> = callbackFlow {
         val scanner = adapter?.bluetoothLeScanner
         if (scanner == null) {
             close(IllegalStateException("Bluetooth is off"))
@@ -55,7 +59,7 @@ class MiScaleScanner(private val context: Context) {
             .setServiceData(BODY_COMPOSITION, ByteArray(MiScaleParser.PACKET_SIZE), ByteArray(MiScaleParser.PACKET_SIZE))
             .build()
         val settings = ScanSettings.Builder()
-            .setScanMode(ScanSettings.SCAN_MODE_LOW_LATENCY)
+            .setScanMode(if (fast) ScanSettings.SCAN_MODE_LOW_LATENCY else ScanSettings.SCAN_MODE_BALANCED)
             .setCallbackType(ScanSettings.CALLBACK_TYPE_ALL_MATCHES)
             .build()
         scanner.startScan(listOf(filter), settings, callback)

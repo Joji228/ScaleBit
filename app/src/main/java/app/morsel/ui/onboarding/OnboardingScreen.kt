@@ -1,5 +1,7 @@
 package app.morsel.ui.onboarding
 
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.AlertDialog
 import androidx.compose.ui.res.stringResource
 import app.morsel.R
 import androidx.activity.compose.BackHandler
@@ -74,6 +76,13 @@ import kotlin.math.roundToLong
 fun OnboardingScreen(viewModel: OnboardingViewModel, engines: SettingsViewModel, onDone: () -> Unit, onExit: () -> Unit) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     BackHandler { if (!viewModel.back()) onExit() }
+    state.error?.let { error ->
+        AlertDialog(
+            onDismissRequest = { viewModel.dismissError() },
+            text = { Text(error) },
+            confirmButton = { TextButton(onClick = { viewModel.dismissError() }) { Text(stringResource(R.string.ok)) } },
+        )
+    }
 
     val steps = state.steps
     val index = steps.indexOf(state.step).coerceAtLeast(0)
