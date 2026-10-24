@@ -71,6 +71,7 @@ data class AiMeal(
 )
 
 /** [fallbackReason] explains why the primary provider wasn't used, when it wasn't. */
+@Serializable
 data class AnalysisResult(
     val meal: AiMeal,
     val provider: Provider,

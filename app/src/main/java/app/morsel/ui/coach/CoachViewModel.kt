@@ -21,6 +21,8 @@ import app.morsel.data.db.FoodItemEntity
 import app.morsel.data.db.MealEntity
 import app.morsel.data.db.macros
 import app.morsel.domain.MealType
+import app.morsel.domain.Nutrition
+import app.morsel.domain.Sex
 import app.morsel.domain.UserProfile
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
@@ -191,8 +193,15 @@ class CoachViewModel(private val app: AppContainer) : ViewModel() {
         }
     }
 
-    /** Fills in what the card shows for a meal to delete, and drops proposals for meals that don't exist. */
+    /**
+     * Fills in what the card shows for a meal to delete, drops proposals for meals that don't
+     * exist, and never offers a calorie target under the safe minimum for the user's sex.
+     */
     private suspend fun prepare(action: CoachAction): CoachAction? {
+        if (action.type == ActionType.SET_CALORIES && action.kcal != null) {
+            val sex = app.settings.profile.first()?.sex ?: Sex.MALE
+            return action.copy(kcal = maxOf(action.kcal, Nutrition.minimumKcal(sex)))
+        }
         if (action.type != ActionType.DELETE_MEAL) return action
         val meal = app.repository.meal(action.mealId ?: return null) ?: return null
         return action.copy(name = meal.meal.name, date = meal.meal.date, kcal = meal.macros().kcal.roundToInt())

@@ -60,9 +60,12 @@ object CoachContext {
         return fixed + nowLine(now)
     }
 
+    /** Starts the clock line; Claude's request splits the cached part off here (see CoachRequests). */
+    const val NOW_MARKER = "\nNow: "
+
     /** The time goes last, after the data, so everything before it stays the same from one day to the next. */
     private fun nowLine(now: LocalDateTime): String =
-        "\nNow: " + now.format(DateTimeFormatter.ofPattern("EEEE yyyy-MM-dd HH:mm", Locale.ENGLISH)) + ". Today's numbers are still in progress.\n"
+        NOW_MARKER + now.format(DateTimeFormatter.ofPattern("EEEE yyyy-MM-dd HH:mm", Locale.ENGLISH)) + ". Today's numbers are still in progress.\n"
 
     private class LoggedMeal(val meal: MealEntity, val items: List<FoodItemEntity>) {
         val date: LocalDate = LocalDate.parse(meal.date)

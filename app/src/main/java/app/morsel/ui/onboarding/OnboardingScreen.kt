@@ -187,7 +187,7 @@ private fun Basics(state: OnboardingState, vm: OnboardingViewModel) {
         { sex -> vm.update { it.copy(sex = sex) } },
     )
     Spacer(Modifier.height(12.dp))
-    NumberStepper("Age", state.profile.age.toDouble(), { v -> vm.update { it.copy(age = v.toInt()) } }, 14.0..90.0, 1.0, "years")
+    NumberStepper("Age", state.profile.age.toDouble(), { v -> vm.update { it.copy(age = v.toInt(), ageSetOn = LocalDate.now().toString()) } }, 14.0..90.0, 1.0, "years")
     Spacer(Modifier.height(12.dp))
     NumberStepper("Height", state.profile.heightCm, { v -> vm.update { it.copy(heightCm = v) } }, 130.0..220.0, 1.0, "cm")
 }

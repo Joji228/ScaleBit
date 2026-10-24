@@ -2,6 +2,7 @@ package app.morsel.ai
 
 import app.morsel.data.AppRegion
 import app.morsel.data.CoachActions
+import app.morsel.data.CoachContext
 import app.morsel.data.CoachMessage
 import app.morsel.data.Provider
 import app.morsel.data.ThinkingLevel
@@ -88,16 +89,27 @@ internal object CoachRequests {
     fun CoachMessage.content(): String =
         if (actions.isEmpty()) text else text + actions.joinToString("") { "\n[Proposed change: ${CoachActions.summary(it)}]" }
 
-    /** Claude: the data is marked for prompt caching, so follow-up questions reuse it cheaply. */
+    /**
+     * Claude: the rules and data are marked for prompt caching, so follow-up questions reuse them
+     * cheaply. The clock line that ends the data changes every minute, so it goes in a block of
+     * its own after the cached one; inside it, it would make every question a cache miss.
+     */
     fun anthropic(model: String, system: String, history: List<CoachMessage>): JsonObject = buildJsonObject {
         put("model", model)
         put("max_tokens", MAX_TOKENS)
         put("temperature", TEMPERATURE)
+        val cut = system.lastIndexOf(CoachContext.NOW_MARKER).takeIf { it > 0 } ?: system.length
         putJsonArray("system") {
             addJsonObject {
                 put("type", "text")
-                put("text", system)
+                put("text", system.substring(0, cut))
                 putJsonObject("cache_control") { put("type", "ephemeral") }
+            }
+            if (cut < system.length) {
+                addJsonObject {
+                    put("type", "text")
+                    put("text", system.substring(cut))
+                }
             }
         }
         putJsonArray("messages") {

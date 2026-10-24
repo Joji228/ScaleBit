@@ -18,6 +18,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
+import java.time.LocalDate
 import java.security.KeyStore
 import javax.crypto.Cipher
 import javax.crypto.KeyGenerator
@@ -72,7 +73,7 @@ class SettingsRepository(context: Context) {
     private fun modelPref(provider: Provider) = stringPreferencesKey("${provider.prefix}_model")
 
     val profile: Flow<UserProfile?> = store.data.map { prefs ->
-        prefs[profileKey]?.let { runCatching { json.decodeFromString<UserProfile>(it) }.getOrNull() }
+        prefs[profileKey]?.let { runCatching { json.decodeFromString<UserProfile>(it) }.getOrNull() }?.agedTo(LocalDate.now())
     }
 
     val theme: Flow<ThemeMode> = store.data.map { prefs ->

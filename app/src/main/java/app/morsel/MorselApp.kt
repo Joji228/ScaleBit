@@ -9,6 +9,7 @@ import app.morsel.ble.MiScaleScanner
 import app.morsel.data.AppRegion
 import app.morsel.data.CoachStore
 import app.morsel.data.DayClock
+import app.morsel.data.DraftStore
 import app.morsel.data.MorselRepository
 import app.morsel.data.PhotoStore
 import app.morsel.data.PlanRepository
@@ -26,6 +27,8 @@ import okhttp3.OkHttpClient
 import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.merge
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import java.io.File
 import java.time.LocalDate
 
@@ -67,7 +70,29 @@ class AppContainer(context: Context) {
     val foodFacts = OpenFoodFacts(runCatching { context.packageManager.getPackageInfo(context.packageName, 0).versionName }.getOrNull() ?: "1", http)
     /** The AI coach's current conversation (beta, off by default). */
     val coach = CoachStore(File(context.filesDir, "coach"))
-    var draft: MealDraft? = null
+    private val drafts = DraftStore(File(context.filesDir, "draft"))
+    private var draftLoaded = false
+    private var currentDraft: MealDraft? = null
+    private val draftWrites = Mutex()
+
+    /**
+     * The scan waiting on the results screen. Also kept on disk, so it's still there if Android
+     * closes the app in the background while it waits; the file is tiny, so it's read on first use.
+     */
+    var draft: MealDraft?
+        @Synchronized get() {
+            if (!draftLoaded) {
+                currentDraft = drafts.load()
+                draftLoaded = true
+            }
+            return currentDraft
+        }
+        @Synchronized set(value) {
+            currentDraft = value
+            draftLoaded = true
+            // Always writes whatever is current when it runs, so quick changes can't land out of order.
+            scope.launch { draftWrites.withLock { runCatching { drafts.save(draft) } } }
+        }
 
     /** The day the dashboard is showing. Water taps go to it; scanned meals always go to today. */
     val viewedDay = MutableStateFlow(clock.today.value)
@@ -100,7 +125,8 @@ class AppContainer(context: Context) {
     init {
         // Housekeeping on launch: fix old model settings, drop stale captures, enforce the photo window.
         scope.launch {
-            photos.clearCaptures()
+            // A scan still waiting on the results screen keeps its photos.
+            photos.clearCaptures(keep = draft?.photos.orEmpty())
             runCatching { repository.prunePhotos(photos.mealPhotos()) }
         }
     }
