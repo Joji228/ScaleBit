@@ -1,5 +1,13 @@
 package app.morsel.ui.scan
 
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.material.icons.rounded.PhotoCamera
+import androidx.compose.foundation.layout.offset
 import androidx.compose.ui.res.stringResource
 import app.morsel.R
 import android.Manifest
@@ -528,35 +536,62 @@ private fun PhotoStrip(viewModel: ScanViewModel, modifier: Modifier) {
  * Adds a photo to the scan (Snap and analyze below does the one-tap version), so it carries a
  * plus rather than looking like a camera's only button.
  */
+/**
+ * The camera shutter: a filled circle inside a thin ring, like the system camera. It sinks a
+ * little while pressed, and once photos are taken a small badge counts them against the limit,
+ * so it's clear more than one photo can go into a meal without a caption.
+ */
 @Composable
 private fun Shutter(enabled: Boolean, photos: Int, limit: Int, onClick: () -> Unit) {
     val tint = MaterialTheme.colorScheme.primary
-    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+    val interaction = remember { MutableInteractionSource() }
+    val pressed by interaction.collectIsPressedAsState()
+    val scale by animateFloatAsState(if (pressed) 0.9f else 1f, tween(110), label = "shutter")
+    val description = when {
+        photos >= limit -> "Photo limit reached"
+        photos == 0 -> "Take a photo"
+        else -> "Add another photo, $photos of $limit taken"
+    }
+    Box(Modifier.size(72.dp), contentAlignment = Alignment.Center) {
         Box(
             Modifier
-                .size(60.dp)
+                .size(72.dp)
+                .alpha(if (enabled) 1f else 0.4f)
+                .border(3.dp, tint, CircleShape)
+                .padding(6.dp)
+                .graphicsLayer {
+                    scaleX = scale
+                    scaleY = scale
+                }
                 .clip(CircleShape)
-                .background(if (enabled) tint else tint.copy(alpha = 0.35f))
-                .clickable(enabled = enabled, onClick = onClick),
+                .background(tint)
+                .clickable(interactionSource = interaction, indication = null, enabled = enabled, onClick = onClick)
+                .semantics { contentDescription = description },
             contentAlignment = Alignment.Center,
         ) {
-            Icon(Icons.Rounded.Add, "Add a photo", Modifier.size(28.dp), tint = MaterialTheme.colorScheme.onPrimary)
+            Icon(
+                if (photos == 0) Icons.Rounded.PhotoCamera else Icons.Rounded.Add,
+                null,
+                Modifier.size(26.dp),
+                tint = MaterialTheme.colorScheme.onPrimary,
+            )
         }
-        Spacer(Modifier.height(6.dp))
-        // Says what the button is for, so it's clear more than one photo can go into a meal.
-        Text(
-            when {
-                photos >= limit -> "Photo limit reached"
-                photos == 0 -> "Tap to take a photo"
-                else -> "Tap to add another"
-            },
-            style = MaterialTheme.typography.labelMedium,
-            color = Color.White,
-            modifier = Modifier
-                .clip(RoundedCornerShape(50))
-                .background(Color.Black.copy(alpha = 0.55f))
-                .padding(horizontal = 10.dp, vertical = 4.dp),
-        )
+        if (photos > 0) {
+            Text(
+                "$photos/$limit",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onPrimary,
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .offset(x = 4.dp, y = (-2).dp)
+                    .clip(RoundedCornerShape(50))
+                    .background(MaterialTheme.colorScheme.background)
+                    .padding(1.5.dp)
+                    .clip(RoundedCornerShape(50))
+                    .background(tint)
+                    .padding(horizontal = 6.dp, vertical = 1.dp),
+            )
+        }
     }
 }
 
