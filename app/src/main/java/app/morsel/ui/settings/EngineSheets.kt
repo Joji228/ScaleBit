@@ -296,9 +296,19 @@ internal fun SheetButton(label: String, filled: Boolean, modifier: Modifier, onC
     }
 }
 
+/** A few plain words about each service, so the choice in step 1 makes sense without reading any docs. */
+private fun Provider.blurb(): String = when (this) {
+    Provider.DEEPSEEK -> "Low cost, reads food photos well"
+    Provider.GEMINI -> "Has a free tier"
+    Provider.OPENAI -> "Pay as you go"
+    Provider.ANTHROPIC -> "Pay as you go"
+    Provider.OPENROUTER -> "One key for many models, some free"
+    Provider.CUSTOM -> "Any OpenAI-compatible service"
+}
+
 /**
- * Adding an engine in four steps: choose the platform, open its key page, paste the key, save and
- * test. A key copied on that page is pasted in by itself when you come back to ScaleBit.
+ * Connecting an AI engine in four steps: pick a service, open its key page, paste the key, then save
+ * and check it. A key copied on that page pastes itself in when you come back to ScaleBit.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -312,16 +322,22 @@ internal fun AddEngineSheet(addable: List<Provider>, viewModel: SettingsViewMode
     var pasted by remember { mutableStateOf(false) }
     val check by viewModel.keyCheck.collectAsStateWithLifecycle()
     val chosen = provider
-    Sheet(title = "Add an AI engine", subtitle = "Four quick steps. Your key stays on this phone.", onDismiss = onDismiss) { close ->
-        Step(1, "Choose a platform") {
+    val connected = check is KeyCheck.Ok
+    Sheet(
+        title = "Connect an AI engine",
+        subtitle = "Photo scans and descriptions use your own key from one service. Your key stays on this phone.",
+        onDismiss = onDismiss,
+    ) { close ->
+        Step(1, "Pick a service") {
             ExposedDropdownMenuBox(expanded = menuOpen, onExpandedChange = { menuOpen = it }) {
                 OutlinedTextField(
                     value = chosen?.title.orEmpty(),
                     onValueChange = {},
                     readOnly = true,
                     singleLine = true,
-                    label = { Text(stringResource(R.string.ai_platform)) },
-                    placeholder = { Text(stringResource(R.string.choose_one)) },
+                    label = { Text("Service") },
+                    placeholder = { Text("Tap to choose") },
+                    supportingText = { chosen?.let { Text(it.blurb()) } },
                     trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = menuOpen) },
                     shape = RoundedCornerShape(14.dp),
                     modifier = Modifier.menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable).fillMaxWidth(),
@@ -332,9 +348,11 @@ internal fun AddEngineSheet(addable: List<Provider>, viewModel: SettingsViewMode
                             text = {
                                 Column {
                                     Text(option.title, style = MaterialTheme.typography.bodyLarge)
-                                    option.byline?.let {
-                                        Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                                    }
+                                    Text(
+                                        option.blurb(),
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    )
                                 }
                             },
                             onClick = {
@@ -342,6 +360,7 @@ internal fun AddEngineSheet(addable: List<Provider>, viewModel: SettingsViewMode
                                 key = ""
                                 url = ""
                                 pasted = false
+                                viewModel.resetKeyCheck()
                                 menuOpen = false
                             },
                         )
@@ -351,20 +370,24 @@ internal fun AddEngineSheet(addable: List<Provider>, viewModel: SettingsViewMode
         }
 
         if (chosen != null) {
-            Step(2, "Get your ${chosen.title} key") {
-                GetKeyButton(chosen)
-                Text(
-                    if (chosen.keyUrl != null) {
-                        "Copy the key on that page, then come back here. ScaleBit pastes it in for you."
-                    } else {
-                        chosen.keyHelp
-                    },
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
+            Step(2, "Get a key") {
+                if (chosen.keyUrl != null) {
+                    GetKeyButton(chosen)
+                    Text(
+                        "Sign in on that page, create a key and copy it. When you come back, it pastes in by itself.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                } else {
+                    Text(
+                        "Copy a key from your service, and type its web address in the next step.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
             }
 
-            Step(3, "Paste your key") {
+            Step(3, "Paste the key") {
                 PasteKeyOnReturn(chosen, key) {
                     key = it
                     pasted = true
@@ -374,8 +397,8 @@ internal fun AddEngineSheet(addable: List<Provider>, viewModel: SettingsViewMode
                         value = url,
                         onValueChange = { url = it },
                         singleLine = true,
-                        label = { Text(stringResource(R.string.service_address)) },
-                        placeholder = { Text(stringResource(R.string.https_openrouter_ai_api_v1)) },
+                        label = { Text("Web address") },
+                        placeholder = { Text("https://example.com/v1") },
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri),
                         shape = RoundedCornerShape(14.dp),
                         modifier = Modifier.fillMaxWidth(),
@@ -389,7 +412,8 @@ internal fun AddEngineSheet(addable: List<Provider>, viewModel: SettingsViewMode
                         pasted = false
                     },
                     singleLine = true,
-                    placeholder = { Text(stringResource(R.string.paste_your_key)) },
+                    label = { Text("Key") },
+                    placeholder = { Text("Paste your key here") },
                     visualTransformation = if (visible) VisualTransformation.None else PasswordVisualTransformation(),
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
                     trailingIcon = {
@@ -409,18 +433,30 @@ internal fun AddEngineSheet(addable: List<Provider>, viewModel: SettingsViewMode
                 )
                 if (pasted && key.isNotBlank()) {
                     Spacer(Modifier.height(6.dp))
-                    Text(stringResource(R.string.pasted_from_your_clipboard), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary)
+                    Text("Pasted from your clipboard", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary)
                 }
             }
 
-            Step(4, "Save and test") {
-                CheckStatus(check)
+            Step(4, "Save and check") {
+                if (connected) {
+                    Text(
+                        "Connected. ${chosen.title} answered, so scans and descriptions can use it.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.primary,
+                    )
+                } else {
+                    CheckStatus(check)
+                }
                 Spacer(Modifier.height(12.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    SheetButton("Done", filled = false, modifier = Modifier.weight(1f), onClick = close)
-                    SheetButton("Add engine", filled = true, modifier = Modifier.weight(1f)) {
-                        viewModel.addEngine(chosen)
-                        viewModel.saveKey(chosen, key, url)
+                    if (connected) {
+                        SheetButton("Done", filled = true, modifier = Modifier.weight(1f), onClick = close)
+                    } else {
+                        SheetButton("Close", filled = false, modifier = Modifier.weight(1f), onClick = close)
+                        SheetButton("Save and check", filled = true, modifier = Modifier.weight(1f)) {
+                            viewModel.addEngine(chosen)
+                            viewModel.saveKey(chosen, key, url)
+                        }
                     }
                 }
             }

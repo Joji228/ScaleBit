@@ -7,6 +7,7 @@ import app.morsel.data.AppRegion
 import app.morsel.data.CoachMessage
 import app.morsel.data.Provider
 import app.morsel.data.ThinkingLevel
+import app.morsel.data.TokenBudget
 import app.morsel.data.SettingsRepository
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
@@ -19,6 +20,7 @@ import java.time.LocalDateTime
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
+import java.time.ZoneId
 import kotlinx.serialization.json.addJsonObject
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.booleanOrNull
@@ -133,6 +135,7 @@ class AiService(private val settings: SettingsRepository, client: OkHttpClient) 
      * does a failure move on to that one; the result then says why the first was skipped.
      */
     suspend fun analyze(images: List<ByteArray>, note: String?): AnalysisResult {
+        checkBudget()
         val ai = settings.ai.first()
         val errors = mutableListOf<String>()
         val order = listOfNotNull(ai.primary, ai.fallbackTarget)
@@ -164,6 +167,7 @@ class AiService(private val settings: SettingsRepository, client: OkHttpClient) 
      * DeepSeek thinking level and backup engine as meal scans.
      */
     suspend fun chat(context: String, messages: List<CoachMessage>, lookups: Boolean = false): CoachReply {
+        checkBudget()
         val history = CoachRequests.history(messages)
         if (history.isEmpty() || !history.last().fromUser) throw AiException("Ask the coach something first")
         val ai = settings.ai.first()
@@ -535,6 +539,17 @@ class AiService(private val settings: SettingsRepository, client: OkHttpClient) 
 
     private class HttpException(val code: Int, message: String) : Exception(message)
 
+    /** Refuses a request once the day's or the week's token limit is used up. */
+    private suspend fun checkBudget() {
+        TokenBudget.blocked(
+            entries = TokenBudget.parse(settings.aiUsageLog.first()),
+            daily = settings.aiDailyLimit.first(),
+            weekly = settings.aiWeeklyLimit.first(),
+            now = System.currentTimeMillis(),
+            zone = ZoneId.systemDefault(),
+        )?.let { throw AiException(it) }
+    }
+
     private suspend fun post(url: String, headers: Map<String, String>, body: JsonObject, provider: Provider): JsonObject {
         val request = Request.Builder().url(url).apply { headers.forEach { (k, v) -> header(k, v) } }
             .post(body.toString().toRequestBody(jsonMedia))
@@ -571,7 +586,9 @@ class AiService(private val settings: SettingsRepository, client: OkHttpClient) 
                 }
             })
         }
-        return json.parseToJsonElement(text).jsonObject
+        val root = json.parseToJsonElement(text).jsonObject
+        TokenBudget.tokensIn(root).takeIf { it > 0 }?.let { settings.recordAiTokens(it, System.currentTimeMillis()) }
+        return root
     }
 
     private fun describeError(provider: Provider, code: Int, body: String) = AiResponses.describeError(provider, code, body)

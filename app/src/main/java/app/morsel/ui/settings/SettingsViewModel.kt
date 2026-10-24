@@ -13,6 +13,9 @@ import app.morsel.data.Provider
 import app.morsel.data.StorageInfo
 import app.morsel.data.formatBytes
 import app.morsel.data.ThemeMode
+import app.morsel.data.TokenBudget
+import app.morsel.data.TokenUsage
+import java.time.ZoneId
 import app.morsel.data.ThinkingLevel
 import app.morsel.domain.AdaptiveEstimate
 import app.morsel.ui.components.HapticsSetting
@@ -137,6 +140,15 @@ class SettingsViewModel(private val app: AppContainer) : ViewModel() {
     val message = MutableStateFlow<String?>(null)
 
     /** The Settings → Updates row: checking, offering a version, downloading, or ready to install. */
+    /** Tokens used today and in the last 7 days, with the limits chosen. */
+    val usage: Flow<TokenUsage> = combine(app.settings.aiUsageLog, app.settings.aiDailyLimit, app.settings.aiWeeklyLimit) { log, daily, weekly ->
+        TokenBudget.summary(TokenBudget.parse(log), daily, weekly, System.currentTimeMillis(), ZoneId.systemDefault())
+    }
+
+    fun setDailyLimit(tokens: Long) = viewModelScope.launch { app.settings.setDailyLimit(tokens) }
+
+    fun setWeeklyLimit(tokens: Long) = viewModelScope.launch { app.settings.setWeeklyLimit(tokens) }
+
     /** Greek foods and brands tuning, on by default. */
     val greekTuning: Flow<Boolean> = app.settings.regionGreece
 

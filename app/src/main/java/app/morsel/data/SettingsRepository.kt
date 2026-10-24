@@ -6,6 +6,7 @@ import android.security.keystore.KeyProperties
 import android.util.Base64
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
+import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
@@ -60,6 +61,9 @@ class SettingsRepository(context: Context) {
     private val foodFactsKey = booleanPreferencesKey("use_food_facts")
     private val coachKey = booleanPreferencesKey("coach_enabled")
     private val greekKey = booleanPreferencesKey("region_greece")
+    private val usageKey = stringPreferencesKey("ai_usage")
+    private val dailyLimitKey = longPreferencesKey("ai_daily_limit")
+    private val weeklyLimitKey = longPreferencesKey("ai_weekly_limit")
     private val hapticsKey = booleanPreferencesKey("haptics_enabled")
     private val coachTutorialKey = booleanPreferencesKey("coach_tutorial_done")
 
@@ -94,6 +98,13 @@ class SettingsRepository(context: Context) {
 
     /** Greek foods and brands tuning for scans, the coach and food search; on unless turned off. */
     val regionGreece: Flow<Boolean> = store.data.map { prefs -> prefs[greekKey] ?: true }.distinctUntilChanged()
+
+    /** Tokens used per AI request, as "time:tokens" pairs (see TokenBudget). */
+    val aiUsageLog: Flow<String> = store.data.map { prefs -> prefs[usageKey].orEmpty() }.distinctUntilChanged()
+
+    /** The day limit and the week limit in tokens; 0 means no limit. */
+    val aiDailyLimit: Flow<Long> = store.data.map { prefs -> prefs[dailyLimitKey] ?: 0L }.distinctUntilChanged()
+    val aiWeeklyLimit: Flow<Long> = store.data.map { prefs -> prefs[weeklyLimitKey] ?: 0L }.distinctUntilChanged()
 
     /** False until the user has pulled the coach down once after turning it on (the hint shows until then). */
     val coachTutorialDone: Flow<Boolean> = store.data.map { prefs -> prefs[coachTutorialKey] ?: false }.distinctUntilChanged()
@@ -149,6 +160,18 @@ class SettingsRepository(context: Context) {
      *   "deepseek-chat" alias. Clear those so "Automatic" really is automatic.
      * - Fallback used to be on by default. It is now off, so reset whatever was stored once.
      */
+    suspend fun recordAiTokens(tokens: Long, now: Long) {
+        store.edit { prefs -> prefs[usageKey] = TokenBudget.add(prefs[usageKey].orEmpty(), now, tokens, now) }
+    }
+
+    suspend fun setDailyLimit(tokens: Long) {
+        store.edit { it[dailyLimitKey] = tokens }
+    }
+
+    suspend fun setWeeklyLimit(tokens: Long) {
+        store.edit { it[weeklyLimitKey] = tokens }
+    }
+
     suspend fun setRegionGreece(on: Boolean) {
         store.edit { it[greekKey] = on }
     }

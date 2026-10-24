@@ -118,6 +118,10 @@ import app.morsel.ai.OpenRouterModels
 import app.morsel.data.AiSettings
 import app.morsel.data.Provider
 import app.morsel.data.ThinkingLevel
+import app.morsel.data.TokenBudget
+import app.morsel.data.TokenUsage
+import app.morsel.ui.components.PillSelector
+import androidx.compose.material3.LinearProgressIndicator
 import app.morsel.ui.components.Pill
 import app.morsel.ui.components.RoundIconButton
 import app.morsel.ui.components.rememberHaptics
@@ -171,6 +175,7 @@ fun AiSettingsScreen(viewModel: SettingsViewModel, onBack: () -> Unit) {
             modifier = Modifier.windowInsetsPadding(WindowInsets.navigationBars),
         ) {
             item { BalanceCard(ai.primary, ai, balance, onRefresh = viewModel::refreshBalance) }
+            item { UsageCard(viewModel) }
 
             item {
                 Text(
@@ -583,5 +588,41 @@ private fun SettingRow(icon: ImageVector, title: String, value: String?, onClick
             Pill(it.text, it.color)
         }
         Icon(Icons.AutoMirrored.Rounded.KeyboardArrowRight, null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+    }
+}
+
+/** The token limits: what the engines have used today and in the last 7 days, and the caps the user picks. */
+@Composable
+private fun UsageCard(viewModel: SettingsViewModel) {
+    val usage by viewModel.usage.collectAsStateWithLifecycle(initialValue = TokenUsage(0, 0, 0, 0))
+    Surface(shape = RoundedCornerShape(22.dp), color = MaterialTheme.colorScheme.surfaceContainer, modifier = Modifier.fillMaxWidth()) {
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            Text("Token limit", style = MaterialTheme.typography.titleSmall)
+            UsageLine("Today", usage.today, usage.daily)
+            UsageLine("Last 7 days", usage.week, usage.weekly)
+            Text("Per day", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            PillSelector(TokenBudget.dailyChoices, usage.daily, { TokenBudget.label(it) }, { viewModel.setDailyLimit(it) })
+            Text("Per week", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            PillSelector(TokenBudget.weeklyChoices, usage.weekly, { TokenBudget.label(it) }, { viewModel.setWeeklyLimit(it) })
+            Text(
+                "Counts the tokens each engine reports back. A reply that starts under the limit can finish a little over it.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+    }
+}
+
+@Composable
+private fun UsageLine(label: String, used: Long, limit: Long) {
+    Column {
+        Text(
+            if (limit > 0) "$label: ${TokenBudget.grouped(used)} of ${TokenBudget.grouped(limit)} tokens"
+            else "$label: ${TokenBudget.grouped(used)} tokens",
+            style = MaterialTheme.typography.bodyMedium,
+        )
+        if (limit > 0) {
+            LinearProgressIndicator(progress = { (used.toFloat() / limit).coerceIn(0f, 1f) }, modifier = Modifier.fillMaxWidth())
+        }
     }
 }
