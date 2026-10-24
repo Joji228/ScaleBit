@@ -98,6 +98,7 @@ import app.morsel.ui.result.ResultViewModel
 import app.morsel.ui.scan.ScanScreen
 import app.morsel.ui.scan.ScanViewModel
 import app.morsel.ui.settings.AiSettingsScreen
+import app.morsel.ui.settings.DevicesScreen
 import app.morsel.ui.settings.SettingsScreen
 import app.morsel.ui.settings.SettingsViewModel
 import app.morsel.ui.theme.MorselTheme
@@ -112,6 +113,7 @@ import kotlinx.serialization.Serializable
 @Serializable data class ResultRoute(val mealId: Long = -1L)
 @Serializable object SettingsRoute
 @Serializable object AiSettingsRoute
+@Serializable object DevicesRoute
 @Serializable data class OnboardingRoute(val edit: Boolean = false)
 @Serializable object BodyRoute
 
@@ -316,8 +318,15 @@ private fun MorselNavHost(container: AppContainer, start: Any) {
                             onBack = { nav.popBackStack() },
                             onEditProfile = { nav.navigate(OnboardingRoute(edit = true)) },
                             onAiEngine = { nav.navigate(AiSettingsRoute) },
+                            onDevices = { nav.navigate(DevicesRoute) },
                             onReset = { nav.navigate(OnboardingRoute()) { popUpTo(0) { inclusive = true } } },
                         )
+                    }
+                }
+                composable<DevicesRoute> {
+                    Screen {
+                        val vm = viewModel { SettingsViewModel(container) }
+                        DevicesScreen(viewModel = vm, onBack = { nav.popBackStack() })
                     }
                 }
                 composable<AiSettingsRoute> {

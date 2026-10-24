@@ -1,7 +1,7 @@
 # Smart scale: protocol, weigh-in rules and formulas
 
 ScaleBit's optional integration with the **Xiaomi Mi Body Composition Scale 2 (model XMTZC05HM)**.
-It's turned on in *Settings → Smart scale* (off by default). This page documents how it works,
+It's turned on in *Settings → Devices* (off by default). This page documents how it works,
 so the code can be understood and maintained without the original research notes. Every number
 here is copied from the code; if they ever disagree, the code wins.
 

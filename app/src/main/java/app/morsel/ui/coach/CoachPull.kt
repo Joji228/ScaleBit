@@ -51,6 +51,7 @@ import kotlin.math.abs
 import kotlin.math.cos
 import kotlin.math.roundToInt
 import kotlin.math.sin
+import kotlin.math.sqrt
 
 /**
  * Pull down and hold to call the coach, like pull-to-refresh: drag down while the page is already
@@ -110,8 +111,12 @@ class CoachPull internal constructor(
         holdJob?.cancel()
         scope.launch { hold.snapTo(0f) }
         if (pull == 0f) return
+        // No bounce on the way back: a spring that overshoots would take the bubble past the top,
+        // hide it, and bring it back faintly for a moment, which reads as a flash.
         settleJob = scope.launch {
-            animate(pull, 0f, animationSpec = spring(dampingRatio = 0.75f, stiffness = Spring.StiffnessMediumLow)) { v, _ -> pull = v }
+            animate(pull, 0f, animationSpec = spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessMediumLow)) { v, _ ->
+                pull = v.coerceAtLeast(0f)
+            }
         }
     }
 
@@ -252,7 +257,9 @@ fun CoachPullBubble(state: CoachPull, modifier: Modifier = Modifier) {
                     val grow = if (state.popped) 1f + 0.5f * burst else 0.55f + 0.45f * state.progress
                     scaleX = grow
                     scaleY = grow
-                    alpha = if (state.popped) (1f - burst * 1.6f).coerceIn(0f, 1f) else state.progress.coerceAtLeast(0.25f)
+                    // Shows up quickly as the pull starts (the square root) but fades all the way out as it
+                    // goes back up, so letting go early never leaves a faint bubble behind.
+                    alpha = if (state.popped) (1f - burst * 1.6f).coerceIn(0f, 1f) else sqrt(state.progress)
                 }
                 .background(MaterialTheme.colorScheme.surfaceContainerHighest, CircleShape),
             contentAlignment = Alignment.Center,
